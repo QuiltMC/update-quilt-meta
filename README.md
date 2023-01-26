@@ -1,10 +1,8 @@
 # Quilt Meta
 
-Quilt Meta ia a json HTTP api that can be used to query meta data about Quilt projects.
+[Quilt Meta](https://meta.quiltmc.org/) ia a json HTTP api that can be used to query meta data about Quilt projects.
 
 It can be used by tools or launchers that wish to query version information about Quilt.
-
-Hosted at [https://meta.quiltmc.org/](https://meta.quiltmc.org/)
 
 # What is this repository?
 
