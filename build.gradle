@@ -2,8 +2,8 @@ plugins {
     id 'java'
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = '16'
+targetCompatibility = '16'
 
 repositories {
     mavenCentral()
@@ -11,9 +11,7 @@ repositories {
 
 dependencies {
     implementation "com.google.code.gson:gson:2.8.6"
-    implementation 'com.amazonaws:aws-lambda-java-core:1.2.1'
-    implementation 'com.amazonaws:aws-lambda-java-events:3.6.0'
-    implementation platform('software.amazon.awssdk:bom:2.15.15')
-    implementation 'software.amazon.awssdk:s3'
+    implementation "com.backblaze.b2:b2-sdk-core:6.1.1"
+    implementation "com.backblaze.b2:b2-sdk-httpclient:6.1.1"
     testImplementation 'junit:junit:4.13.1'
 }

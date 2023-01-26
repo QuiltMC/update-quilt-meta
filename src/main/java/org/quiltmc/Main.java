@@ -1,53 +1,88 @@
 package org.quiltmc;
-
-import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.backblaze.b2.client.B2StorageClient;
+import com.backblaze.b2.client.B2StorageClientFactory;
+import com.backblaze.b2.client.contentHandlers.B2ContentMemoryWriter;
+import com.backblaze.b2.client.contentSources.B2ByteArrayContentSource;
+import com.backblaze.b2.client.contentSources.B2ContentSource;
+import com.backblaze.b2.client.exceptions.B2Exception;
+import com.backblaze.b2.client.structures.B2FileVersion;
+import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.google.gson.*;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.utils.Pair;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Array;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
- * Handler for requests to Lambda function.
+ * Main generator class for the meta.
  */
-@SuppressWarnings("unused")
-public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class Main {
     private static final DateFormat ISO_8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private final MavenRepository maven = new MavenRepository(System.getenv("META_MAVEN_URL"));
-    private final MavenRepository fabric = new MavenRepository("https://maven.fabricmc.net/");
-    private final String group = System.getenv("META_GROUP");
+    private B2StorageClient client;
+    private String bucketId;
+    private final MavenRepository maven = new MavenRepository(Constants.BASE_MAVEN_URL);
+    private final MavenRepository fabric = new MavenRepository(Constants.FABRIC_MAVEN_URL);
     private final Map<String, JsonArray> arrays = new ConcurrentHashMap<>();
     private final Map<String, JsonElement> launcherMetaData = new ConcurrentHashMap<>();
     private final Map<String, JsonObject> gameIntermediaries = new ConcurrentHashMap<>();
     private final Map<String, JsonObject> gameHashedMojmap = new ConcurrentHashMap<>();
     private final Deque<MavenRepository.ArtifactMetadata.Artifact> loaderVersions = new ConcurrentLinkedDeque<>();
-    private final Map<String, Pair<byte[], String>> files = new ConcurrentHashMap<>();
+    private final Map<String, FileUpload> files = new ConcurrentHashMap<>();
+    private final Map<String, String> previousHashes = new ConcurrentHashMap<>();
+    private final Map<String, String> newHashes = new ConcurrentHashMap<>();
+    private final Set<String> seenFiles = new ConcurrentSkipListSet<>();
+    private Integer skippedFiles = 0;
 
-    public APIGatewayProxyResponseEvent handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("X-Custom-Header", "application/json");
+    public static void main(String[] args) {
+        if (Constants.B2_APP_KEY_ID == null || Constants.B2_APP_KEY == null) {
+            System.err.println("[ERROR] B2_APP_KEY_ID and B2_APP_KEY must be set in the environment. Please refer to the documentation.");
+            System.exit(1);
+        }
 
-        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent()
-                .withHeaders(headers);
+        Boolean success = new Main().build();
+
+        if (!success) {
+            System.out.println("[ERROR] Failed to build meta. Please refer to the logs and report this to the Infrastructure team.");
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+
+    public Boolean build() {
+        this.client = B2StorageClientFactory
+            .createDefaultFactory()
+            .create(Constants.B2_APP_KEY_ID, Constants.B2_APP_KEY, Constants.USER_AGENT);
+        try {
+            this.bucketId = this.client.getBucketOrNullByName(Constants.B2_BUCKET).getBucketId();
+            if (this.bucketId == null) {
+                throw new IOException("Failed to find bucket");
+            }
+        } catch (B2Exception | IOException e) {
+            e.printStackTrace();
+            System.err.println("[ERROR] Failed to get bucket ID for bucket " + Constants.B2_BUCKET);
+            return null;
+        }
 
         try {
+            this.populatePreviousHashes();
+
+            System.out.println("[INFO] Gathering data..");
+
             ExecutorService executor = Executors.newCachedThreadPool();
 
             CompletableFuture.allOf(
@@ -59,7 +94,7 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     CompletableFuture.runAsync(this.populateLoader(executor), executor)
             ).join();
 
-            System.out.println("Building loader stuff");
+            System.out.println("[INFO] Gathering loader data..");
 
             this.populateLoaderVersions();
             this.populateProfiles();
@@ -75,30 +110,30 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
             upload("v3/versions", this.gson.toJson(versions));
             upload("v3/versions/game", this.gson.toJson(this.arrays.get("game")));
 
-            this.upload();
+            System.out.println("[INFO] Syncing files..");
+            this.doUpload();
 
-            System.out.println("Done updating files");
+            System.out.println("[INFO] Updating manifest..");
+            this.updateManifest();
 
-            return response
-                    .withStatusCode(200)
-                    .withBody(this.gson.toJson(versions));
+            System.out.println("[INFO] Content synced");
+
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
-
-            return response
-                    .withBody(String.format("{\"message\": \"%s\"}", e.toString()))
-                    .withStatusCode(500);
+            return false;
         }
     }
 
     private void populateMappings()  {
         try {
-            JsonArray mappings = toJson(this.maven.getMetadata(this.group, "quilt-mappings"),
+            JsonArray mappings = toJson(this.maven.getMetadata(Constants.GROUP, "quilt-mappings"),
                     version -> new JsonPrimitive(stripInfo(version.version)));
             this.arrays.put("mappings", mappings);
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get mappings");
         }
     }
 
@@ -108,7 +143,7 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
         Map<String, JsonArray> qmVersions = new HashMap<>();
 
         try {
-            for (MavenRepository.ArtifactMetadata.Artifact artifact : this.maven.getMetadata(this.group, "quilt-mappings")) {
+            for (MavenRepository.ArtifactMetadata.Artifact artifact : this.maven.getMetadata(Constants.GROUP, "quilt-mappings")) {
                 JsonObject object = new JsonObject();
 
                 String gameVersion = stripInfo(artifact.version);
@@ -125,8 +160,11 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 qmVersions.computeIfAbsent(gameVersion, v -> new JsonArray()).add(object);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get quilt mappings");
         }
+
+        System.out.println("[INFO] Found " + qm.size() + " quilt mappings");
 
         JsonArray array = new JsonArray();
         gameVersions.forEach(array::add);
@@ -144,7 +182,7 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
         JsonArray installer = new JsonArray();
 
         try {
-            for (MavenRepository.ArtifactMetadata.Artifact artifact : this.maven.getMetadata(this.group, System.getenv("META_INSTALLER"))) {
+            for (MavenRepository.ArtifactMetadata.Artifact artifact : this.maven.getMetadata(Constants.GROUP, Constants.INSTALLER_ARTIFACT)) {
                 JsonObject object = new JsonObject();
 
                 object.addProperty("url", artifact.url());
@@ -154,8 +192,11 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 installer.add(object);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get installer");
         }
+
+        System.out.println("[INFO] Found " + installer.size() + " installers");
 
         this.arrays.put("installer", installer);
         this.upload("v3/versions/installer", this.gson.toJson(installer));
@@ -169,6 +210,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
             CompletableFuture<Void>[] futures = (CompletableFuture<Void>[]) Array.newInstance(CompletableFuture.class, this.loaderVersions.size());
             int i = 0;
 
+            System.out.println("[INFO] Found " + this.loaderVersions.size() + " loaders");
+
             for (MavenRepository.ArtifactMetadata.Artifact artifact : this.loaderVersions) {
                 futures[i++] = CompletableFuture.runAsync(() -> {
                     try {
@@ -176,7 +219,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                         JsonElement launcherMeta = JsonParser.parseReader(new InputStreamReader(url.openStream()));
                         this.launcherMetaData.put(artifact.mavenId(), launcherMeta);
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        e.printStackTrace();
+                        throw new RuntimeException("Failed to get loader meta for " + artifact.mavenId());
                     }
                 }, executor);
             }
@@ -189,7 +233,7 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
         JsonArray loader = new JsonArray();
 
         try {
-            for (MavenRepository.ArtifactMetadata.Artifact artifact : this.maven.getMetadata(this.group, System.getenv("META_LOADER"))) {
+            for (MavenRepository.ArtifactMetadata.Artifact artifact : this.maven.getMetadata(Constants.GROUP, Constants.LOADER_ARTIFACT)) {
                 JsonObject object = new JsonObject();
 
                 object.addProperty("separator", artifact.version.contains("+build.") ? "+build." : ".");
@@ -207,7 +251,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 this.loaderVersions.add(artifact);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get loader");
         }
 
         this.arrays.put("loader", loader);
@@ -235,6 +280,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     intermediaryVersions.computeIfAbsent(artifact.version, v -> new JsonArray()).add(object);
                 }
 
+                System.out.println("[INFO] Found " + intermediaryVersions.size() + " intermediary mappings");
+
                 JsonArray array = new JsonArray();
                 gameIntermediary.forEach(array::add);
 
@@ -246,7 +293,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     this.upload("v3/versions/intermediary/" + entry.getKey(), this.gson.toJson(entry.getValue()));
                 }
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
+                throw new RuntimeException("Failed to get intermediary");
             }
         });
     }
@@ -257,7 +305,7 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
         Map<String, JsonArray> hashedVersions = new HashMap<>();
 
         try {
-            MavenRepository.ArtifactMetadata hashedMojmap = this.maven.getMetadata(this.group, "hashed");
+            MavenRepository.ArtifactMetadata hashedMojmap = this.maven.getMetadata(Constants.GROUP, "hashed");
 
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 JsonArray meta = MinecraftMeta.get(hashedMojmap, gson);
@@ -277,6 +325,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                 hashedVersions.computeIfAbsent(artifact.version, v -> new JsonArray()).add(object);
             }
 
+            System.out.println("[INFO] Found " + gameHashed.size() + " game versions");
+
             JsonArray array = new JsonArray();
             gameHashed.forEach(array::add);
 
@@ -290,7 +340,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
 
             return future;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get hashed mojmap");
         }
     }
 
@@ -318,6 +369,8 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
 
             this.upload(String.format("v3/versions/loader/%s", gameVersion), this.gson.toJson(gameLoaderVersion));
         }
+
+        System.out.println("[INFO] Generated " + this.arrays.get("game").size() * this.arrays.get("loader").size() + " loader versions");
     }
 
     private void populateProfiles() {
@@ -355,8 +408,6 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
 
                     object.addProperty("id", String.format("quilt-loader-%s-%s", loaderVersion, gameVersion));
                     object.addProperty("inheritsFrom", gameVersion);
-                    object.addProperty("releaseTime", currentTime);
-                    object.addProperty("time", currentTime);
                     object.addProperty("type", "release");
 
                     if (launcherMeta.get("mainClass").isJsonObject()) {
@@ -371,10 +422,18 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
                     object.add("arguments", arguments);
                     object.add("libraries", libraries);
 
-                    this.upload(String.format("v3/versions/loader/%s/%s/%s/json", gameVersion, loaderVersion, side.type), this.gson.toJson(object));
+                    String cacheSnapshot = this.gson.toJson(object);
+
+                    // Non-deterministic fields
+                    object.addProperty("releaseTime", currentTime);
+                    object.addProperty("time", currentTime);
+
+                    this.uploadWithCacheSnapshot(String.format("v3/versions/loader/%s/%s/%s/json", gameVersion, loaderVersion, side.type), this.gson.toJson(object), cacheSnapshot);
                 }
             }
         }
+
+        System.out.println("[INFO] Generated " + this.arrays.get("game").size() * this.arrays.get("loader").size() + " loader profiles");
     }
 
     private void upload(String fileName, String fileContents) {
@@ -382,38 +441,147 @@ public class Meta implements RequestHandler<APIGatewayProxyRequestEvent, APIGate
     }
 
     private void upload(String fileName, byte[] fileContents, String contentType) {
-        this.files.put(fileName, Pair.of(fileContents, contentType));
+        this.uploadWithCacheSnapshot(fileName, fileContents, contentType, fileContents);
     }
 
-    private void upload() {
+    private void uploadWithCacheSnapshot(String fileName, String fileContents, String cacheSnapshot) {
+        this.uploadWithCacheSnapshot(fileName, fileContents.getBytes(StandardCharsets.UTF_8), "application/json", cacheSnapshot.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void uploadWithCacheSnapshot(String fileName, byte[] fileContents, String contentType, byte[] cacheSnapshot) {
+        this.seenFiles.add(fileName);
+
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-1");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to get SHA-1 digest");
+        }
+        byte[] hash = digest.digest(cacheSnapshot);
+        String hashString = Base64.getUrlEncoder().encodeToString(hash);
+
+        newHashes.put(fileName, hashString);
+
+        if (this.previousHashes.getOrDefault(fileName, "").equals(hashString)) {
+            this.skippedFiles++;
+            return;
+        }
+        this.files.put(fileName, new FileUpload(fileContents, contentType));
+    }
+
+    private void doUpload() {
         ExecutorService executor = Executors.newFixedThreadPool(50);
-        S3Client s3 = S3Client.create();
-        String bucket = System.getenv("META_BUCKET");
+
+        System.out.println("[INFO] Uploading " + this.files.size() + " file(s) (skipping " + this.skippedFiles + ")");
 
         @SuppressWarnings("unchecked")
         CompletableFuture<Void>[] futures = (CompletableFuture<Void>[]) Array.newInstance(CompletableFuture.class, this.files.size());
         int i = 0;
 
-        for (String file : this.files.keySet()) {
+        for (String filePath : this.files.keySet()) {
             futures[i++] = CompletableFuture.runAsync(() -> {
-                Pair<byte[], String> pair = this.files.get(file);
-                byte[] contentBytes = pair.left();
+                FileUpload file = this.files.get(filePath);
 
-                PutObjectRequest.Builder builder = PutObjectRequest.builder();
-                builder.bucket(bucket);
-                builder.key(file);
-                builder.contentType(pair.right());
-                builder.contentLength((long) contentBytes.length);
+                B2ContentSource source = B2ByteArrayContentSource.build(file.content());
+
+                B2UploadFileRequest.Builder builder = B2UploadFileRequest
+                        .builder(this.bucketId, filePath, file.contentType(), source);
 
                 try {
-                    s3.putObject(builder.build(), RequestBody.fromBytes(contentBytes));
+                    this.client.uploadSmallFile(builder.build());
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
+                    throw new RuntimeException("Failed to upload " + file);
                 }
             }, executor);
         }
-
         CompletableFuture.allOf(futures).join();
+
+        // Delete old files
+        Set<String> oldFiles = new HashSet<>(this.previousHashes.keySet());
+        oldFiles.removeAll(this.seenFiles);
+
+        System.out.println("[INFO] Deleting " + oldFiles.size() + " file(s)");
+
+        @SuppressWarnings("unchecked")
+        CompletableFuture<Void>[] deleteFutures = (CompletableFuture<Void>[]) Array.newInstance(CompletableFuture.class, oldFiles.size());
+        i = 0;
+
+        for (String filePath : oldFiles) {
+            deleteFutures[i++] = CompletableFuture.runAsync(() -> {
+                try {
+                    B2FileVersion version = this.client.getFileInfoByName(Constants.B2_BUCKET, filePath);
+                    this.client.deleteFileVersion(version.getFileName(), version.getFileId());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("Failed to delete " + filePath);
+                }
+            }, executor);
+        }
+        CompletableFuture.allOf(deleteFutures).join();
+    }
+
+    /** Gather hashes from the manifest file currently in meta. **/
+    private void populatePreviousHashes() {
+
+        try {
+            B2ContentMemoryWriter writer = B2ContentMemoryWriter.build();
+            this.client.downloadByName(Constants.B2_BUCKET, Constants.MANIFEST_FILE, writer);
+
+            GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(writer.getBytes()));
+            Scanner scanner = new Scanner(gzip);
+            scanner.useDelimiter(";");
+
+            while (scanner.hasNext()) {
+                String line = scanner.next();
+                String[] split = line.split(":");
+
+                if (split.length == 2) {
+                    previousHashes.put(split[0], split[1]);
+                } else {
+                    System.out.println("[WARN] Invalid line in manifest: " + line);
+                }
+            }
+
+        } catch (B2Exception | IOException e) {
+            if (e instanceof B2Exception && ((B2Exception) e).getStatus() == 404) {
+                System.out.println("[WARN] No previous manifest found. All files will be re-uploaded.");
+            } else {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to download manifest file");
+            }
+        }
+
+        System.out.println("[INFO] Loaded " + previousHashes.size() + " previous hashes from the manifest");
+    }
+
+    private void updateManifest() {
+        StringBuilder builder = new StringBuilder();
+        for (String file : this.newHashes.keySet()) {
+            builder.append(file).append(":").append(this.newHashes.get(file)).append(";");
+        }
+
+        GZIPOutputStream gzip;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            gzip = new GZIPOutputStream(out);
+            gzip.write(builder.toString().getBytes(StandardCharsets.UTF_8));
+            gzip.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to compress manifest");
+        }
+
+        B2UploadFileRequest request = B2UploadFileRequest
+                .builder(this.bucketId, Constants.MANIFEST_FILE, "application/gzip", B2ByteArrayContentSource.build(out.toByteArray()))
+                .build();
+        try {
+            this.client.uploadSmallFile(request);
+        } catch (B2Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to upload manifest");
+        }
     }
 
     private static String stripInfo(String version) {

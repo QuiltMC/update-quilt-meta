@@ -25,7 +25,7 @@ public class MavenRepository {
         return new ArtifactMetadata(group, name, versions);
     }
 
-    private static Collection<String> readVersionsFromPom(String path) throws IOException {
+    private static Collection<String> readVersionsFromPom(String path) {
         Collection<String> versions = new LinkedHashSet<>();
 
         try {
@@ -46,7 +46,8 @@ public class MavenRepository {
             versions.addAll(list);
 
         } catch (IOException | XMLStreamException e){
-            System.out.println("Failed to load " + path + ": " + e);
+            e.printStackTrace();
+            throw new RuntimeException("Failed to load " + path);
         }
 
         return versions;
