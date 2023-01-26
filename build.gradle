@@ -1,12 +1,22 @@
 plugins {
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'java'
 }
 
-sourceCompatibility = '16'
-targetCompatibility = '16'
-
 repositories {
     mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.quiltmc.Main'
+    }
 }
 
 dependencies {

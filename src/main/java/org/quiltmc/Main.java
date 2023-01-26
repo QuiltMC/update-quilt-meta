@@ -49,7 +49,9 @@ public class Main {
     private Integer skippedFiles = 0;
 
     public static void main(String[] args) {
-        if (Constants.B2_APP_KEY_ID == null || Constants.B2_APP_KEY == null) {
+        System.out.println("[INFO] Running build " + Constants.TOOL_VERSION);
+
+        if (Constants.B2_APP_KEY_ID.isEmpty() || Constants.B2_APP_KEY.isEmpty()) {
             System.err.println("[ERROR] B2_APP_KEY_ID and B2_APP_KEY must be set in the environment. Please refer to the documentation.");
             System.exit(1);
         }
