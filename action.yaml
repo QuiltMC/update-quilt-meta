@@ -9,6 +9,9 @@ inputs:
   b2-key:
     description: The B2 key to use for uploading to the B2 bucket
     required: true
+  cf-key:
+    description: The Cloudflare API key to use for purging the Cloudflare cache
+    required: true
 
 runs:
   using: docker
@@ -16,3 +19,4 @@ runs:
   args:
     - ${{ inputs.b2-key-id }}
     - ${{ inputs.b2-key }}
+    - ${{ inputs.cf-key }}

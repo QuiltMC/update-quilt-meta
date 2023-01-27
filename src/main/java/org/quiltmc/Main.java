@@ -9,11 +9,9 @@ import com.backblaze.b2.client.structures.B2FileVersion;
 import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.google.gson.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.reflect.Array;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -23,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -51,8 +50,8 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("[INFO] Running build " + Constants.TOOL_VERSION);
 
-        if (Constants.B2_APP_KEY_ID.isEmpty() || Constants.B2_APP_KEY.isEmpty()) {
-            System.err.println("[ERROR] B2_APP_KEY_ID and B2_APP_KEY must be set in the environment. Please refer to the documentation.");
+        if (Constants.B2_APP_KEY_ID.isEmpty() || Constants.B2_APP_KEY.isEmpty() || Constants.CF_KEY.isEmpty()) {
+            System.err.println("[ERROR] B2_APP_KEY_ID, B2_APP_KEY and CF_KEY must be set in the environment. Please refer to the documentation.");
             System.exit(1);
         }
 
@@ -115,10 +114,18 @@ public class Main {
             System.out.println("[INFO] Syncing files..");
             this.doUpload();
 
+            System.out.println("[INFO] Purging cache..");
+            this.purgeCache();
+
             System.out.println("[INFO] Updating manifest..");
             this.updateManifest();
 
             System.out.println("[INFO] Content synced");
+
+            // Print a changed file collapsible (for GitHub Actions)
+            System.out.println("::group::Changed file(s) (" + this.files.size() + ")");
+            System.out.println(this.files.keySet().stream().sorted().collect(Collectors.joining("\n")));
+            System.out.println("::endgroup::");
 
             return true;
         } catch (Exception e) {
@@ -522,6 +529,51 @@ public class Main {
             }, executor);
         }
         CompletableFuture.allOf(deleteFutures).join();
+    }
+
+    private void purgeCache() {
+        List<String> urls = new ArrayList<>(this.files.keySet()).stream().map(url -> Constants.BASE_URL + url).toList();
+
+        int requestsRequired = urls.size() / Constants.CF_PURGE_LIMIT_PER_MINUTE + 1;
+        System.out.println("[INFO] Purging " + this.files.size() + " url (eta. " + (requestsRequired - 1) * 60 + "s)");
+
+        for (int i = 1; i <= requestsRequired; i++) {
+            try {
+                List<String> batch = urls.subList((i - 1) * Constants.CF_PURGE_LIMIT_PER_MINUTE, Math.min(i * Constants.CF_PURGE_LIMIT_PER_MINUTE, urls.size()));
+
+                JsonObject body = new JsonObject();
+                body.add("files", this.gson.toJsonTree(batch));
+
+                HttpURLConnection connection = (HttpURLConnection) Constants.CF_PURGE_FILES_ENDPOINT.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("Accept", "application/json");
+                connection.setRequestProperty("Authorization", "Bearer " + Constants.CF_KEY);
+
+                connection.setDoOutput(true);
+                try (OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream())) {
+                    this.gson.toJson(body, writer);
+                }
+
+                // Check the status code
+                int responseCode = connection.getResponseCode();
+                if (responseCode != 200) {
+                    String response = new BufferedReader(new InputStreamReader(connection.getErrorStream())).lines().collect(Collectors.joining("\n"));
+                    throw new RuntimeException("Failed to purge batch " + i + " (status code " + responseCode + "): " + response);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to purge batch " + i);
+            }
+
+            if (i != requestsRequired) {
+                try {
+                    Thread.sleep(60_000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     /** Gather hashes from the manifest file currently in meta. **/
