@@ -534,12 +534,15 @@ public class Main {
     private void purgeCache() {
         List<String> urls = new ArrayList<>(this.files.keySet()).stream().map(url -> Constants.BASE_URL + url).toList();
 
-        int requestsRequired = urls.size() / Constants.CF_PURGE_LIMIT_PER_MINUTE + 1;
-        System.out.println("[INFO] Purging " + this.files.size() + " url (eta. " + (requestsRequired - 1) * 60 + "s)");
+        int requestsRequired = urls.size() / Constants.CF_PURGE_LIMIT_PER_REQUEST + 1;
+        int requestsRemainingPerMinute = Constants.CF_PURGE_LIMIT_PER_MINUTE;
+        long bucketStartTime = System.currentTimeMillis();
+        System.out.println("[INFO] Purging " + this.files.size() + " url (eta. " + urls.size() / Constants.CF_PURGE_LIMIT_PER_MINUTE + "min(s))");
 
         for (int i = 1; i <= requestsRequired; i++) {
             try {
-                List<String> batch = urls.subList((i - 1) * Constants.CF_PURGE_LIMIT_PER_MINUTE, Math.min(i * Constants.CF_PURGE_LIMIT_PER_MINUTE, urls.size()));
+                List<String> batch = urls.subList((i - 1) * Constants.CF_PURGE_LIMIT_PER_REQUEST, Math.min(i * Constants.CF_PURGE_LIMIT_PER_REQUEST, urls.size()));
+                requestsRemainingPerMinute -= batch.size();
 
                 JsonObject body = new JsonObject();
                 body.add("files", this.gson.toJsonTree(batch));
@@ -566,12 +569,14 @@ public class Main {
                 throw new RuntimeException("Failed to purge batch " + i);
             }
 
-            if (i != requestsRequired) {
+            if (requestsRemainingPerMinute < Constants.CF_PURGE_LIMIT_PER_REQUEST) {
                 try {
-                    Thread.sleep(60_000);
+                    Thread.sleep(60_000 - (System.currentTimeMillis() - bucketStartTime));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                requestsRemainingPerMinute = Constants.CF_PURGE_LIMIT_PER_MINUTE;
+                bucketStartTime = System.currentTimeMillis();
             }
         }
     }

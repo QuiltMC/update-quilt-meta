@@ -38,6 +38,7 @@ public final class Constants {
     }
 
     static final int CF_PURGE_LIMIT_PER_MINUTE = 1000;
+    static final int CF_PURGE_LIMIT_PER_REQUEST = 30;
 
     // Internal
     static final String MANIFEST_FILE = "_manifest_01.gz";
