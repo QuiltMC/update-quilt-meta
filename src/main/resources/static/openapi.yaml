@@ -1,0 +1,605 @@
+openapi: 3.0.0
+info:
+  title: Quilt Meta API
+  version: "2023-01-29"
+  description: |
+    This is the API for the Quilt Meta server. You can use it to inspect various information about our releases.
+    
+    # Versioning
+    | Version | Support commitment | End of support | Sunset |
+    |---------|--------------------|----------------|--------|
+    | v3      | 6 months           | TBD            | TBD    |
+    
+    # User agents
+    Please make sure to set a proper [user agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) when accessing this service. Future API versions may block empty or non-personalized user agents.
+
+servers:
+  - url: https://meta.quiltmc.org
+    description: Production server
+  - url: https://meta.quiltmc-testing.xyz
+    description: Testing server, may not always be available
+
+paths:
+  /v3/versions:
+    get:
+      summary: Lists all the supported versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: |
+            JSON arrays of game, mapping, hashed and loader versions
+            
+            Beware: This is a large file
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  game:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameVersionV3'
+                  mappings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QuiltMappingsVersionV3'
+                  hashed:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HashedVersionV3'
+                  loader:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LoaderVersionV3'
+                  installer:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InstallerVersionV3'
+
+  /v3/versions/game:
+    get:
+      summary: Lists all the supported game versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of game versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameVersionV3'
+
+  /v3/versions/game/hashed:
+    get:
+      summary: Lists all the supported hashed versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of game versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: "1.12.2"
+                  description: The supported game version
+
+  /v3/versions/game/intermediary:
+    get:
+      summary: Lists all the supported intermediary versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of game versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: "1.12.2"
+                  description: The supported game version
+
+  /v3/versions/game/quilt-mappings:
+    get:
+      summary: Lists all the supported quilt-mappings versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of game versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  example: "1.12.2"
+                  description: The supported game version
+
+  /v3/versions/installer:
+    get:
+      summary: Lists all the supported installer versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of installer versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstallerVersionV3'
+
+  /v3/versions/hashed:
+    get:
+      summary: Lists all the supported hashed versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of hashed versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HashedVersionV3'
+
+  /v3/versions/hashed/{game_version}:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the hashed versions for
+    get:
+      summary: Lists all the supported hashed versions for a game version
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of hashed versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HashedVersionV3'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v3/versions/intermediary:
+    get:
+      summary: Lists all the supported intermediary versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of intermediary versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IntermediaryVersionV3'
+
+  /v3/versions/intermediary/{game_version}:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the intermediary versions for
+    get:
+      summary: Lists all the supported intermediary versions for a game version
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of intermediary versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IntermediaryVersionV3'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v3/versions/loader:
+    get:
+      summary: Lists all the supported loader versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of loader versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoaderVersionV3'
+
+  /v3/versions/loader/{game_version}:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the loader metadata for
+    get:
+      summary: Lists all the supported loader versions for a game version, with metadata
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of loader metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoaderMetadataV3'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v3/versions/loader/{game_version}/{loader_version}:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the loader metadata for
+      - name: loader_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "0.17.10"
+          description: The loader version to get the loader metadata for
+    get:
+      summary: Gets the loader metadata for a game version and loader version
+      tags:
+        - v3
+      responses:
+        '200':
+          description: The loader metadata
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/LoaderMetadataV3'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v3/versions/loader/{game_version}/{loader_version}/profile/json:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the profile for
+      - name: loader_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "0.17.10"
+          description: The loader version to get the profile for
+    get:
+      summary: Gets the launcher profile for a game version and loader version
+      tags:
+        - v3
+      responses:
+        '200':
+          description: The launcher profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LauncherProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v3/versions/loader/{game_version}/{loader_version}/server/json:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the server profile for
+      - name: loader_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "0.17.10"
+          description: The loader version to get the server profile for
+    get:
+      summary: Gets the server launcher profile for a game version and loader version
+      tags:
+        - v3
+      responses:
+        '200':
+          description: The launcher profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LauncherProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v3/versions/quilt-mappings:
+    get:
+      summary: Lists all the supported quilt-mapping versions
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of quilt-mapping versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuiltMappingsVersionV3'
+
+  /v3/versions/quilt-mappings/{game_version}:
+    parameters:
+      - name: game_version
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "1.18.2"
+          description: The game version to get the quilt-mapping versions for
+    get:
+      summary: Lists all the supported quilt-mapping versions for a game version
+      tags:
+        - v3
+      responses:
+        '200':
+          description: JSON arrays of quilt-mapping versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuiltMappingsVersionV3'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    GameVersionV3:
+      type: object
+      properties:
+        version:
+          type: string
+          example: 1.12.2
+          description: The version as given by Mojang. Includes snapshots.
+        stable:
+          type: boolean
+          example: true
+          description: Whether this is considered as a stable release or snapshot.
+
+    QuiltMappingsVersionV3:
+      type: object
+      properties:
+        gameVersion:
+          type: string
+          example: 1.12.2
+          description: The game version this mapping is for
+        separator:
+          type: string
+          example: "+build."
+          description: The separator used in the mapping version
+        build:
+          type: integer
+          example: 1
+          description: The build number of the mapping
+        maven:
+          type: string
+          example: org.quiltmc:quilt-mappings:1.12.2+build.1
+          description: The maven identifier for this mapping
+        version:
+          type: string
+          example: 1.12.2+build.1
+          description: The version for this mapping release.
+        hashed:
+          type: string
+          example: 1.12.2+build.1
+          description: The hashed version for this mapping release.
+
+    HashedVersionV3:
+      type: object
+      properties:
+        version:
+          type: string
+          example: 1.12.2
+          description: The version for this hashed release.
+        maven:
+          type: string
+          example: org.quiltmc:hashed:1.12.2
+          description: The maven identifier for this hashed release.
+
+    LoaderVersionV3:
+      type: object
+      properties:
+        separator:
+          type: string
+          example: "."
+          description: The separator used in the loader version
+        build:
+          type: integer
+          example: 1
+          description: The build number of the loader
+        maven:
+          type: string
+          example: org.quiltmc:quilt-loader:0.1.0
+        version:
+          type: string
+          example: 0.1.0
+          description: The version for this loader release.
+
+    InstallerVersionV3:
+      type: object
+      properties:
+        url:
+          type: string
+          example: https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-installer/0.1.0/quilt-installer-0.1.0.jar
+          description: The URL to the installer download.
+        maven:
+          type: string
+          example: org.quiltmc:quilt-installer:0.1.0
+          description: The maven identifier for this installer release.
+        version:
+          type: string
+          example: 0.1.0
+          description: The version for this installer release.
+
+    IntermediaryVersionV3:
+      type: object
+      properties:
+        maven:
+          type: string
+          example: net.fabricmc:intermediary:1.12.2
+          description: The maven identifier for this intermediary release.
+        version:
+          type: string
+          example: 1.12.2
+          description: The version for this intermediary release.
+
+    LoaderMetadataV3:
+      type: object
+      properties:
+        loader:
+          $ref: '#/components/schemas/LoaderVersionV3'
+        hashed:
+          $ref: '#/components/schemas/HashedVersionV3'
+        intermediary:
+          $ref: '#/components/schemas/IntermediaryVersionV3'
+        loaderMeta:
+          type: object
+          properties:
+            version:
+              type: integer
+              example: 1
+            libraries:
+              type: object
+              properties:
+                client:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LibraryRef'
+                common:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LibraryRef'
+                server:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LibraryRef'
+            mainClass:
+              type: object
+              properties:
+                client:
+                  type: string
+                  example: org.quiltmc.loader.impl.launch.knot.KnotClient
+                server:
+                  type: string
+                  example: org.quiltmc.loader.impl.launch.knot.KnotServer
+                serverLauncher:
+                  type: string
+                  example: org.quiltmc.loader.impl.launch.server.QuiltServerLauncher
+
+    LibraryRef:
+      type: object
+      properties:
+        name:
+          type: string
+          example: org.quiltmc:quilt-config:1.0.0
+          description: The maven identifier for this library
+        url:
+          type: string
+          example: https://maven.quiltmc.org/repository/release/
+          description: The URL to the corresponding Maven.
+
+    LauncherProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "quilt-loader-0.17.10-1.18.2"
+          description: The unique profile ID
+        inheritsFrom:
+          type: string
+          example: "1.18.2"
+          description: The profile ID of the profile this profile inherits from
+        type:
+          type: string
+          example: "release"
+          description: The profile type
+        mainClass:
+          type: string
+          example: "org.quiltmc.loader.impl.launch.knot.KnotClient"
+          description: The main entrypoint
+        arguments:
+          type: object
+          properties:
+            game:
+              type: array
+              items:
+                type: string
+        libraries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryRef'
+        releaseTime:
+          type: string
+          example: "2021-12-31T23:59:59.999Z"
+          description: When this JSON file was last generated
+        time:
+          type: string
+          example: "2021-12-31T23:59:59.999Z"
+          description: When this JSON file was last generated
+
+  responses:
+    NotFound:
+      description: The requested resource was not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: "not_found"
+                description: The error code
+              message:
+                type: string
+                example: "File with such name does not exist."
+                description: Human readable error message
+              status:
+                type: integer
+                example: 404
+                description: HTTP status code

@@ -13,6 +13,15 @@ that will update the Quilt Meta content.
 
 Please see the [Meta API index](https://meta.quiltmc.org/) for documentation.
 
-The versions are in order, the newest versions appear first
+# Using the action
 
-`game_version` and `loader_version` should be url encoded to allow for special characters. For example `1.14 Pre-Release 5` becomes `1.14%20Pre-Release%205`
+If you are a Quilt project maintainer, you can use this action to update the Quilt Meta content inside your CI. To do so, add the following step to your workflow:
+
+```yaml
+- name: Update Quilt Meta
+  uses: quiltmc/update-quilt-meta@main
+  with:
+    b2-key-id: ${{ secrets.META_B2_KEY_ID }}
+    b2-key: ${{ secrets.META_B2_KEY }}
+    cf-key: ${{ secrets.META_CF_KEY }}
+```

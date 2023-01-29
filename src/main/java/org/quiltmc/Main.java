@@ -111,6 +111,12 @@ public class Main {
             upload("v3/versions", this.gson.toJson(versions));
             upload("v3/versions/game", this.gson.toJson(this.arrays.get("game")));
 
+            // Add static files
+            ClassLoader classLoader = getClass().getClassLoader();
+            upload("index.html", classLoader.getResourceAsStream("index.html").readAllBytes(), "text/html");
+            upload("openapi.yaml", classLoader.getResourceAsStream("openapi.yaml").readAllBytes(), "text/yaml");
+            upload("favicon.ico", classLoader.getResourceAsStream("favicon.ico").readAllBytes(), "image/x-icon");
+
             System.out.println("[INFO] Syncing files..");
             this.doUpload();
 
@@ -537,7 +543,7 @@ public class Main {
         int requestsRequired = urls.size() / Constants.CF_PURGE_LIMIT_PER_REQUEST + 1;
         int requestsRemainingPerMinute = Constants.CF_PURGE_LIMIT_PER_MINUTE;
         long bucketStartTime = System.currentTimeMillis();
-        System.out.println("[INFO] Purging " + this.files.size() + " url (eta. " + urls.size() / Constants.CF_PURGE_LIMIT_PER_MINUTE + "min(s))");
+        System.out.println("[INFO] Purging " + this.files.size() + " url (eta. " + urls.size() / Constants.CF_PURGE_LIMIT_PER_MINUTE + " min(s))");
 
         for (int i = 1; i <= requestsRequired; i++) {
             try {
