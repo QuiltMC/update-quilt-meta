@@ -116,6 +116,7 @@ public class Main {
             upload("index.html", classLoader.getResourceAsStream("static/index.html").readAllBytes(), "text/html");
             upload("openapi.yaml", classLoader.getResourceAsStream("static/openapi.yaml").readAllBytes(), "text/yaml");
             upload("favicon.ico", classLoader.getResourceAsStream("static/favicon.ico").readAllBytes(), "image/x-icon");
+            upload("dark-swagger.css", classLoader.getResourceAsStream("static/dark-swagger.css").readAllBytes(), "text/css");
 
             System.out.println("[INFO] Syncing files..");
             this.doUpload();
