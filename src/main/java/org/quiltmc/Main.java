@@ -113,9 +113,9 @@ public class Main {
 
             // Add static files
             ClassLoader classLoader = getClass().getClassLoader();
-            upload("index.html", classLoader.getResourceAsStream("index.html").readAllBytes(), "text/html");
-            upload("openapi.yaml", classLoader.getResourceAsStream("openapi.yaml").readAllBytes(), "text/yaml");
-            upload("favicon.ico", classLoader.getResourceAsStream("favicon.ico").readAllBytes(), "image/x-icon");
+            upload("index.html", classLoader.getResourceAsStream("static/index.html").readAllBytes(), "text/html");
+            upload("openapi.yaml", classLoader.getResourceAsStream("static/openapi.yaml").readAllBytes(), "text/yaml");
+            upload("favicon.ico", classLoader.getResourceAsStream("static/favicon.ico").readAllBytes(), "image/x-icon");
 
             System.out.println("[INFO] Syncing files..");
             this.doUpload();
