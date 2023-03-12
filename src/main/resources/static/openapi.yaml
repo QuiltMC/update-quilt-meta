@@ -498,7 +498,7 @@ components:
           $ref: '#/components/schemas/HashedVersionV3'
         intermediary:
           $ref: '#/components/schemas/IntermediaryVersionV3'
-        loaderMeta:
+        launcher:
           type: object
           properties:
             version:
