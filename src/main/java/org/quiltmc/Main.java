@@ -89,7 +89,6 @@ public class Main {
             CompletableFuture.allOf(
                     this.populateHashedMojmapAndGame(executor),
                     this.populateIntermediaryAndGame(executor),
-                    CompletableFuture.runAsync(this::populateMappings, executor),
                     CompletableFuture.runAsync(this::populateQuiltMappings, executor),
                     CompletableFuture.runAsync(this::populateInstaller, executor),
                     CompletableFuture.runAsync(this.populateLoader(executor), executor)
@@ -140,18 +139,6 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
             return false;
-        }
-    }
-
-    private void populateMappings()  {
-        try {
-            JsonArray mappings = toJson(this.maven.getMetadata(Constants.GROUP, "quilt-mappings"),
-                    version -> new JsonPrimitive(stripInfo(version.version)));
-            this.arrays.put("mappings", mappings);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to get mappings");
         }
     }
 
