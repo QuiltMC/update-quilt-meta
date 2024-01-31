@@ -385,6 +385,14 @@ public class Main {
             for (JsonElement gameVersionElement : this.arrays.get("game")) {
                 String gameVersion = gameVersionElement.getAsJsonObject().get("version").getAsString();
 
+                if (!this.gameIntermediaries.containsKey(gameVersion)) {
+                    System.out.println("[WARNING] Intermediary mappings not found for version " + gameVersion + ", skipping profile generation for it");
+                    continue;
+                } else if (!this.gameHashedMojmap.containsKey(gameVersion)) {
+                    System.out.println("[WARNING] Hashed mojmap mappings not found for version " + gameVersion + ", skipping profile generation for it");
+                    continue;
+                }
+
                 for (JsonElement loaderVersionElement : this.arrays.get("loader")) {
                     String loaderVersion = loaderVersionElement.getAsJsonObject().get("version").getAsString();
 
