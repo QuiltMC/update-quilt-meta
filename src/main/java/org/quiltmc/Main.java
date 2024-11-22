@@ -12,7 +12,9 @@ import com.google.gson.*;
 import java.io.*;
 import java.lang.reflect.Array;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -259,6 +261,7 @@ public class Main {
                     try {
                         URL url = new URL(artifact.url().replace(".jar", ".json"));
                         JsonElement launcherMeta = JsonParser.parseReader(new InputStreamReader(url.openStream()));
+                        launcherMeta = this.withDependencyData(launcherMeta);
                         this.launcherMetaData.put(artifact.mavenId(), launcherMeta);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -269,6 +272,78 @@ public class Main {
 
             CompletableFuture.allOf(futures).join();
         };
+    }
+
+    private JsonElement withDependencyData(JsonElement loaderJsonObject) {
+        LoaderJson loaderJson = this.gson.fromJson(loaderJsonObject, LoaderJson.class);
+        if (!(loaderJson.version == 1 || loaderJson.version == 2)) {
+            // we can support both these versions simultaneously without changes
+            throw new RuntimeException("Unsupport loader launcherMeta JSON version found: " + loaderJson.version);
+        }
+
+        List<LoaderJson.Library> libraries = new ArrayList<>();
+        addIfNonnull(libraries, loaderJson.libraries.client);
+        addIfNonnull(libraries, loaderJson.libraries.common);
+        addIfNonnull(libraries, loaderJson.libraries.server);
+        addIfNonnull(libraries, loaderJson.libraries.development);
+
+        for (LoaderJson.Library library : libraries) {
+            AtomicBoolean fetchedModuleData = new AtomicBoolean(false);
+            String[] mavenLocation = library.name.split(":");
+            String mavenFolderUrl = library.url + mavenLocation[0].replace('.', '/') + '/' + mavenLocation[1] + '/' + mavenLocation[2] + '/';
+
+            try {
+                // fetch from gradle .module file on maven so we have to do less work
+                URL moduleUrl = new URL(mavenFolderUrl + mavenLocation[1] + '-' + mavenLocation[2] + ".module");
+
+                ModuleData moduleData = ModuleData.readModuleData(this.gson, moduleUrl);
+                ModuleData.findRuntimeFile(moduleData).ifPresent((file) -> {
+                    library.md5 = file.md5;
+                    library.sha1 = file.sha1;
+                    library.sha256 = file.sha256;
+                    library.sha512 = file.sha512;
+                    library.size = file.size;
+
+                    fetchedModuleData.set(true);
+                });
+            } catch (FileNotFoundException ignored) {
+            } catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+
+			if (!fetchedModuleData.get()) {
+                String jarFileUrl = mavenFolderUrl + mavenLocation[1] + '-' + mavenLocation[2] + ".jar";
+
+                try {
+                    BufferedReader md5Reader = new BufferedReader(new InputStreamReader(new URL(jarFileUrl + ".md5").openStream()));
+                    BufferedReader sha1 = new BufferedReader(new InputStreamReader(new URL(jarFileUrl + ".sha1").openStream()));
+                    BufferedReader sha256 = new BufferedReader(new InputStreamReader(new URL(jarFileUrl + ".sha256").openStream()));
+                    BufferedReader sha512 = new BufferedReader(new InputStreamReader(new URL(jarFileUrl + ".sha512").openStream()));
+
+                    library.md5 = md5Reader.readLine();
+                    library.sha1 = sha1.readLine();
+                    library.sha256 = sha256.readLine();
+                    library.sha512 = sha512.readLine();
+
+                    URL url = new URL(jarFileUrl);
+                    URLConnection conn = url.openConnection();
+                    conn.connect();
+                    library.size = conn.getContentLength();
+                } catch (IOException e) {
+                    // this cannot be a hard crash because of a funny quirk: the json on quilt loader 0.17.5-beta.4 is completely broken and has ${version} instead of the real versions
+                    System.out.println("[WARN] Could not get data for maven artifact: " + jarFileUrl);
+					e.printStackTrace();
+				}
+			}
+        }
+
+        return this.gson.toJsonTree(loaderJson, LoaderJson.class);
+    }
+
+    private static <A> void addIfNonnull(Collection<A> collection, Collection<A> toAdd) {
+        if (toAdd != null) {
+            collection.addAll(toAdd);
+        }
     }
 
     private void populateLoader() {
