@@ -14,12 +14,15 @@ import java.lang.reflect.Array;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
@@ -51,8 +54,10 @@ public class Main {
         System.out.println("[INFO] Running build " + Constants.TOOL_VERSION);
 
         if (Constants.B2_APP_KEY_ID.isEmpty() || Constants.B2_APP_KEY.isEmpty() || Constants.CF_KEY.isEmpty()) {
-            System.err.println("[ERROR] B2_APP_KEY_ID, B2_APP_KEY and CF_KEY must be set in the environment. Please refer to the documentation.");
-            System.exit(1);
+            if (!Constants.TESTING) {
+                System.err.println("[ERROR] B2_APP_KEY_ID, B2_APP_KEY and CF_KEY must be set in the environment. Please set Constants#TESTING to true or refer to the documentation to set up in production.");
+                System.exit(1);
+            }
         }
 
         Boolean success = new Main().build();
@@ -65,19 +70,11 @@ public class Main {
     }
 
     public Boolean build() {
-        this.client = B2StorageClientFactory
-            .createDefaultFactory()
-            .create(Constants.B2_APP_KEY_ID, Constants.B2_APP_KEY, Constants.USER_AGENT);
-        try {
-            this.bucketId = this.client.getBucketOrNullByName(Constants.B2_BUCKET).getBucketId();
-            if (this.bucketId == null) {
-                throw new IOException("Failed to find bucket");
-            }
-        } catch (B2Exception | IOException e) {
-            e.printStackTrace();
-            System.err.println("[ERROR] Failed to get bucket ID for bucket " + Constants.B2_BUCKET);
-            return null;
+        if (!this.setupB2()) {
+            return false;
         }
+
+        deleteOldTestingBuild();
 
         try {
             this.populatePreviousHashes();
@@ -140,6 +137,46 @@ public class Main {
             e.printStackTrace();
             return false;
         }
+    }
+
+    private void deleteOldTestingBuild() {
+        if (Constants.TESTING) {
+            deleteDirectory(new File("v3"));
+        }
+    }
+
+    private void deleteDirectory(File toDelete) {
+        File[] allContents = toDelete.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+
+        toDelete.delete();
+    }
+
+    /**
+     * {@return whether B2 was successfully set up (or ignored for testing)}
+     */
+    private boolean setupB2() {
+        if (!Constants.TESTING) {
+            this.client = B2StorageClientFactory
+                    .createDefaultFactory()
+                    .create(Constants.B2_APP_KEY_ID, Constants.B2_APP_KEY, Constants.USER_AGENT);
+            try {
+                this.bucketId = this.client.getBucketOrNullByName(Constants.B2_BUCKET).getBucketId();
+                if (this.bucketId == null) {
+                    throw new IOException("Failed to find bucket");
+                }
+            } catch (B2Exception | IOException e) {
+                e.printStackTrace();
+                System.err.println("[ERROR] Failed to get bucket ID for bucket " + Constants.B2_BUCKET);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void populateQuiltMappings() {
@@ -488,46 +525,66 @@ public class Main {
             futures[i++] = CompletableFuture.runAsync(() -> {
                 FileUpload file = this.files.get(filePath);
 
-                B2ContentSource source = B2ByteArrayContentSource.build(file.content());
+                if (!Constants.TESTING) {
+                    B2ContentSource source = B2ByteArrayContentSource.build(file.content());
 
-                B2UploadFileRequest.Builder builder = B2UploadFileRequest
-                        .builder(this.bucketId, filePath, file.contentType(), source);
+                    B2UploadFileRequest.Builder builder = B2UploadFileRequest
+                            .builder(this.bucketId, filePath, file.contentType(), source);
 
-                try {
-                    this.client.uploadSmallFile(builder.build());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException("Failed to upload " + file);
-                }
+                    try {
+                        this.client.uploadSmallFile(builder.build());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw new RuntimeException("Failed to upload " + file);
+                    }
+                } else {
+                    try {
+                        Path path = Path.of(filePath + ".json");
+                        path.resolve("..").toFile().mkdirs();
+                        path.toFile().createNewFile();
+                        Files.write(path, file.content());
+                    } catch (IOException e) {
+						throw new RuntimeException("Failed to write file for testing dump: " + filePath, e);
+					}
+				}
             }, executor);
         }
         CompletableFuture.allOf(futures).join();
 
-        // Delete old files
-        Set<String> oldFiles = new HashSet<>(this.previousHashes.keySet());
-        oldFiles.removeAll(this.seenFiles);
+        this.deleteOldFiles(executor);
+    }
 
-        System.out.println("[INFO] Deleting " + oldFiles.size() + " file(s)");
+    private void deleteOldFiles(ExecutorService executor) {
+        if (!Constants.TESTING) {
+            Set<String> oldFiles = new HashSet<>(this.previousHashes.keySet());
+            oldFiles.removeAll(this.seenFiles);
 
-        @SuppressWarnings("unchecked")
-        CompletableFuture<Void>[] deleteFutures = (CompletableFuture<Void>[]) Array.newInstance(CompletableFuture.class, oldFiles.size());
-        i = 0;
+            System.out.println("[INFO] Deleting " + oldFiles.size() + " file(s)");
 
-        for (String filePath : oldFiles) {
-            deleteFutures[i++] = CompletableFuture.runAsync(() -> {
-                try {
-                    B2FileVersion version = this.client.getFileInfoByName(Constants.B2_BUCKET, filePath);
-                    this.client.deleteFileVersion(version.getFileName(), version.getFileId());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException("Failed to delete " + filePath);
-                }
-            }, executor);
+            @SuppressWarnings("unchecked")
+            CompletableFuture<Void>[] deleteFutures = (CompletableFuture<Void>[]) Array.newInstance(CompletableFuture.class, oldFiles.size());
+            int i = 0;
+
+            for (String filePath : oldFiles) {
+                deleteFutures[i++] = CompletableFuture.runAsync(() -> {
+                    try {
+                        B2FileVersion version = this.client.getFileInfoByName(Constants.B2_BUCKET, filePath);
+                        this.client.deleteFileVersion(version.getFileName(), version.getFileId());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw new RuntimeException("Failed to delete " + filePath);
+                    }
+                }, executor);
+            }
+            CompletableFuture.allOf(deleteFutures).join();
         }
-        CompletableFuture.allOf(deleteFutures).join();
     }
 
     private void purgeCache() {
+        if (Constants.TESTING) {
+            return;
+        }
+
         List<String> urls = new ArrayList<>(this.files.keySet()).stream().map(url -> Constants.BASE_URL + url).toList();
 
         int requestsRequired = urls.size() / Constants.CF_PURGE_LIMIT_PER_REQUEST + 1;
@@ -579,6 +636,10 @@ public class Main {
 
     /** Gather hashes from the manifest file currently in meta. **/
     private void populatePreviousHashes() {
+        if (this.client == null && Constants.TESTING) {
+            System.out.println("[INFO] Re-uploading all files for testing.");
+            return;
+        }
 
         try {
             B2ContentMemoryWriter writer = B2ContentMemoryWriter.build();
@@ -628,14 +689,22 @@ public class Main {
             throw new RuntimeException("Failed to compress manifest");
         }
 
-        B2UploadFileRequest request = B2UploadFileRequest
-                .builder(this.bucketId, Constants.MANIFEST_FILE, "application/gzip", B2ByteArrayContentSource.build(out.toByteArray()))
-                .build();
-        try {
-            this.client.uploadSmallFile(request);
-        } catch (B2Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to upload manifest");
+        if (!Constants.TESTING) {
+            B2UploadFileRequest request = B2UploadFileRequest
+                    .builder(this.bucketId, Constants.MANIFEST_FILE, "application/gzip", B2ByteArrayContentSource.build(out.toByteArray()))
+                    .build();
+            try {
+                this.client.uploadSmallFile(request);
+            } catch (B2Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to upload manifest");
+            }
+        } else {
+            try {
+                Files.write(Path.of(Constants.MANIFEST_FILE), out.toByteArray());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write manifest file for testing dump: " + Constants.MANIFEST_FILE);
+            }
         }
     }
 
