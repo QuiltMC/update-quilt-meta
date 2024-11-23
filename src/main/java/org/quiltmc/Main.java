@@ -346,8 +346,6 @@ public class Main {
                     object.addProperty("maven", artifact.mavenId());
                     object.addProperty("version", artifact.version);
 
-                    LoaderJson.addSizeAndSignatures(object, this.gson, artifact.mavenId(), artifact.mavenUrl(), "jar", artifact.version);
-
                     intermediary.add(object);
                     gameIntermediary.add(artifact.version);
                     this.gameIntermediaries.putIfAbsent(artifact.version, object);
