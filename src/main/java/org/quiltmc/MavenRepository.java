@@ -90,7 +90,11 @@ public class MavenRepository {
                 return String.format("%s:%s:%s", ArtifactMetadata.this.group, ArtifactMetadata.this.name, this.version);
             }
 
-            public String url() {
+            public String mavenUrl() {
+                return MavenRepository.this.url;
+            }
+
+            public String artifactUrl() {
                 return String.format("%s%s/%s/%s/%s-%s.jar",
                         MavenRepository.this.url,
                         ArtifactMetadata.this.group.replaceAll("\\.", "/"),
