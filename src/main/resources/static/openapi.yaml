@@ -435,12 +435,32 @@ components:
       properties:
         version:
           type: string
-          example: 1.12.2
+          example: 1.14.4
           description: The version for this hashed release.
         maven:
           type: string
-          example: org.quiltmc:hashed:1.12.2
+          example: org.quiltmc:hashed:1.14.4
           description: The maven identifier for this hashed release.
+        md5:
+          type: string
+          example: a71bef1bf2496e43969901e133e1b828
+          description: The MD5 signature of the main JAR file.
+        sha1:
+          type: string
+          example: 7f405b2688cb249777415a005499e2eaa91a3c91
+          description: The SHA1 signature of the main JAR file.
+        sha256:
+          type: string
+          example: 69c1d7aace9639e6c114a2cc2387e038d253302afbc4575a0b29ea6d30353e27
+          description: The SHA256 signature of the main JAR file.
+        sha512:
+          type: string
+          example: 0f04750e98f293af39212de04ffc2cfe7a2fbb6009fdfe3bbad519a7b412870337af2fc5e85df762a60d9a7955b05a6f9fd1a45ea40bb2a1d4968123d089fa59
+          description: The SHA512 signature of the main JAR file.
+        size:
+          type: integer
+          example: 438242
+          description: The size, in bytes, of the main JAR file.
 
     LoaderVersionV3:
       type: object
@@ -455,11 +475,31 @@ components:
           description: The build number of the loader
         maven:
           type: string
-          example: org.quiltmc:quilt-loader:0.1.0
+          example: org.quiltmc:quilt-loader:0.27.0
         version:
           type: string
-          example: 0.1.0
+          example: 0.27.0
           description: The version for this loader release.
+        md5:
+          type: string
+          example: 2a48d2692e0929002b16ee5bec0a99c2
+          description: The MD5 signature of the main JAR file.
+        sha1:
+          type: string
+          example: 1d975b20ff84c443e7a17ddc1c8c19f9eb15dfb6
+          description: The SHA1 signature of the main JAR file.
+        sha256:
+          type: string
+          example: 7769b6a99ff8baa1b6d414bf1454ea6d5da321b0b62d0f822b236b46581db11b
+          description: The SHA256 signature of the main JAR file.
+        sha512:
+          type: string
+          example: d732ded33299a9663493c584d47795904349b8767a65930178c5d952558d69fdde338585ce9b5bb87e687f0a07e6a5aaa43c9ec196a4eee4ca2f28f2975c8f62
+          description: The SHA512 signature of the main JAR file.
+        size:
+          type: integer
+          example: 2492855
+          description: The size, in bytes, of the main JAR file.
 
     InstallerVersionV3:
       type: object
@@ -543,6 +583,26 @@ components:
           type: string
           example: https://maven.quiltmc.org/repository/release/
           description: The URL to the corresponding Maven.
+        md5:
+          type: string
+          example: 4079ad0e22cd1963840c5a180b88796e
+          description: The MD5 signature of the main JAR file.
+        sha1:
+          type: string
+          example: c0e275ff3e33dc879e0719933a30180993f7cce2
+          description: The SHA1 signature of the main JAR file.
+        sha256:
+          type: string
+          example: f91ed67bfff06aba7820b758304edaeb613f2939df3045a60252ce6085dd4617
+          description: The SHA256 signature of the main JAR file.
+        sha512:
+          type: string
+          example: a312bfe84a731c28a72a7af4b5087c8706a266691ba1fd95774aad2ac56a07ce196abd7961a185c2c6ba88abfa0fad4564390ce2d52d4ea7585060abe8486677
+          description: The SHA512 signature of the main JAR file.
+        size:
+          type: integer
+          example: 155315
+          description: The size, in bytes, of the main JAR file.
 
     LauncherProfile:
       type: object
