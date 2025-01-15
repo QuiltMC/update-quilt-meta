@@ -11,7 +11,7 @@ public final class Constants {
     static final String USER_AGENT = "update-quilt-meta/" + TOOL_VERSION;
 
     static final String GROUP = "org.quiltmc";
-    static final boolean TESTING = true;
+    static final boolean TESTING = false;
 
     // Maven
     static final String BASE_MAVEN_URL = "https://maven.quiltmc.org/repository/release/";
