@@ -81,9 +81,7 @@ public class LoaderJson {
 				conn.connect();
 				library.size = conn.getContentLength();
 			} catch (IOException e) {
-				// this cannot be a hard crash because of a funny quirk: the json on quilt loader 0.17.5-beta.4 is completely broken and has ${version} instead of the real versions
-				System.out.println("[WARN] Could not append additional data for loader version: " + loaderVersion + " (artifact: " + mavenLocation[1] + ")");
-				e.printStackTrace();
+				throw new RuntimeException("Could not append additional data for loader version: " + loaderVersion + " (artifact: " + mavenLocation[1] + ")", e);
 			}
 		}
 	}
