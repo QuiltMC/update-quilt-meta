@@ -519,8 +519,8 @@ public class Main {
                     B2FileVersion version = this.client.getFileInfoByName(Constants.B2_BUCKET, filePath);
                     this.client.deleteFileVersion(version.getFileName(), version.getFileId());
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException("Failed to delete " + filePath);
+                    System.out.println("[WARN] Failed to delete " + filePath + ", suppressing error!");
+                    //throw new RuntimeException("Failed to delete " + filePath, e);
                 }
             }, executor);
         }
