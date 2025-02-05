@@ -11,6 +11,7 @@ public final class Constants {
     static final String USER_AGENT = "update-quilt-meta/" + TOOL_VERSION;
 
     static final String GROUP = "org.quiltmc";
+    static final boolean TESTING = false;
 
     // Maven
     static final String BASE_MAVEN_URL = "https://maven.quiltmc.org/repository/release/";
@@ -21,12 +22,12 @@ public final class Constants {
 
     // Backblaze
     static final String B2_BUCKET = "meta-quiltmc-org";
-    static final String B2_APP_KEY_ID = System.getenv("B2_APP_KEY_ID");
-    static final String B2_APP_KEY = System.getenv("B2_APP_KEY");
+    static final String B2_APP_KEY_ID = getEnv("B2_APP_KEY_ID");
+    static final String B2_APP_KEY = getEnv("B2_APP_KEY");
 
     // Cloudflare
     static final String CF_ZONE_ID = "73c99d057aa12563eb4cad4ef14f0796";
-    static final String CF_KEY = System.getenv("CF_KEY");
+    static final String CF_KEY = getEnv("CF_KEY");
     static final URL CF_PURGE_FILES_ENDPOINT;
 
     static {
@@ -42,6 +43,11 @@ public final class Constants {
 
     // Internal
     static final String MANIFEST_FILE = "_manifest_01.gz";
+
+    private static String getEnv(String key) {
+        var env = System.getenv(key);
+        return env == null ? "" : env;
+    }
 
     private Constants() {}
 }
