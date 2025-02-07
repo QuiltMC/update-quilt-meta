@@ -276,7 +276,9 @@ public class Main {
                 for (MavenRepository.ArtifactMetadata.Artifact artifact : intermediaries) {
                     JsonObject object = new JsonObject();
 
-                    object.addProperty("maven", artifact.mavenId());
+                    // Considering that all Intermediary versions have a Tiny v2 build as well as all
+                    // Quilt Loader versions supporting Tiny v2, it is safe to mandate the Tiny V2 build.
+                    object.addProperty("maven", artifact.mavenId() + ":v2");
                     object.addProperty("version", artifact.version);
 
                     intermediary.add(object);
