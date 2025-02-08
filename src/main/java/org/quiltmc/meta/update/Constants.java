@@ -6,7 +6,7 @@ import java.util.Objects;
 
 public final class Constants {
     // General
-    static final String TOOL_VERSION = Objects.requireNonNullElse(System.getenv("GIT_SHA"), "development").subSequence(0, 7).toString();
+    static final String TOOL_VERSION = Objects.requireNonNullElse(Constants.class.getPackage().getImplementationVersion(), "UNKNOWN");
     static final String BASE_URL = "https://meta.quiltmc.org/";
     static final String USER_AGENT = "update-quilt-meta/" + TOOL_VERSION;
 

@@ -3,19 +3,25 @@ plugins {
     id 'java'
 }
 
+def javaVersion = 21;
+
+def env = System.getenv()
+version = env.VERSION ?: "development"
+
 repositories {
     mavenCentral()
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
 }
 
 jar {
     manifest {
         attributes 'Main-Class': 'org.quiltmc.meta.update.Main'
+        attributes 'Implementation-Version': project.version.toString()
     }
 }
 

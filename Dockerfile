@@ -1,16 +1,19 @@
-FROM amazoncorretto:17 as builder
+ARG JAVA_VERSION=21
+ARG VERSION
 
-WORKDIR /builder
+FROM eclipse-temurin:${JAVA_VERSION} AS builder
+
+ENV VERSION=${VERSION}
+
+WORKDIR /src
 COPY . .
 RUN ./gradlew shadowJar
 
-FROM amazoncorretto:17
+FROM eclipse-temurin:${JAVA_VERSION} AS runtime
 
 WORKDIR /app
 COPY entrypoint.sh .
+
+COPY --from=builder /src/build/libs/*-all.jar app.jar
+
 ENTRYPOINT ["/app/entrypoint.sh"]
-
-ARG git_sha="development"
-ENV GIT_SHA=$git_sha
-
-COPY --from=builder /builder/build/libs/*.jar app.jar
