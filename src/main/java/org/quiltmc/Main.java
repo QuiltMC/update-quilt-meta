@@ -55,7 +55,7 @@ public class Main {
             System.exit(1);
         }
 
-        Boolean success = new Main().build();
+        boolean success = new Main().build();
 
         if (!success) {
             System.out.println("[ERROR] Failed to build meta. Please refer to the logs and report this to the Infrastructure team.");
@@ -64,7 +64,7 @@ public class Main {
         System.exit(0);
     }
 
-    public Boolean build() {
+    public boolean build() {
         this.client = B2StorageClientFactory
             .createDefaultFactory()
             .create(Constants.B2_APP_KEY_ID, Constants.B2_APP_KEY, Constants.USER_AGENT);
@@ -76,7 +76,7 @@ public class Main {
         } catch (B2Exception | IOException e) {
             e.printStackTrace();
             System.err.println("[ERROR] Failed to get bucket ID for bucket " + Constants.B2_BUCKET);
-            return null;
+            return false;
         }
 
         try {
