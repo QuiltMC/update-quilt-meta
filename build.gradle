@@ -15,7 +15,7 @@ java {
 
 jar {
     manifest {
-        attributes 'Main-Class': 'org.quiltmc.Main'
+        attributes 'Main-Class': 'org.quiltmc.meta.update.Main'
     }
 }
 

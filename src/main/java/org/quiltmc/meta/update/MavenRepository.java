@@ -1,4 +1,4 @@
-package org.quiltmc;
+package org.quiltmc.meta.update;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;

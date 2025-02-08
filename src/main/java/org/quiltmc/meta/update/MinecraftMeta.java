@@ -1,4 +1,4 @@
-package org.quiltmc;
+package org.quiltmc.meta.update;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;

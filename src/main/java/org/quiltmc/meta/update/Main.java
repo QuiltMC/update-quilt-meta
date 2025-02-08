@@ -1,4 +1,4 @@
-package org.quiltmc;
+package org.quiltmc.meta.update;
 import com.backblaze.b2.client.B2StorageClient;
 import com.backblaze.b2.client.B2StorageClientFactory;
 import com.backblaze.b2.client.contentHandlers.B2ContentMemoryWriter;

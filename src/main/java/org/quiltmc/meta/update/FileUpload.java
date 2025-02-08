@@ -1,4 +1,4 @@
-package org.quiltmc;
+package org.quiltmc.meta.update;
 
 public record FileUpload(byte[] content, String contentType) {
     public byte[] content() {

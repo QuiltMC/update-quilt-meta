@@ -1,4 +1,4 @@
-package org.quiltmc;
+package org.quiltmc.meta.update;
 
 import java.net.MalformedURLException;
 import java.net.URL;
