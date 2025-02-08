@@ -1,0 +1,21 @@
+[versions]
+shadow = "8.1.1"
+
+b2_sdk = "6.3.0"
+gson = "2.12.1"
+
+junit = "5.11.4"
+
+[libraries]
+b2_core = { module = "com.backblaze.b2:b2-sdk-core", version.ref = "b2_sdk" }
+b2_httpclient = { module = "com.backblaze.b2:b2-sdk-httpclient", version.ref = "b2_sdk" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+
+junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit_engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+
+[bundles]
+b2 = ["b2_core", "b2_httpclient"]
+
+[plugins]
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
