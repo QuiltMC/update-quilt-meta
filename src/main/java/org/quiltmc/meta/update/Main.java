@@ -1,4 +1,5 @@
 package org.quiltmc.meta.update;
+
 import com.backblaze.b2.client.B2StorageClient;
 import com.backblaze.b2.client.B2StorageClientFactory;
 import com.backblaze.b2.client.contentHandlers.B2ContentMemoryWriter;
@@ -7,6 +8,7 @@ import com.backblaze.b2.client.contentSources.B2ContentSource;
 import com.backblaze.b2.client.exceptions.B2Exception;
 import com.backblaze.b2.client.structures.B2FileVersion;
 import com.backblaze.b2.client.structures.B2UploadFileRequest;
+import com.backblaze.b2.util.B2Sha1;
 import com.google.gson.*;
 
 import java.io.*;
@@ -14,8 +16,6 @@ import java.lang.reflect.Array;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -44,7 +44,6 @@ public class Main {
     private final Map<String, FileUpload> files = new ConcurrentHashMap<>();
     private final Map<String, String> previousHashes = new ConcurrentHashMap<>();
     private final Map<String, String> newHashes = new ConcurrentHashMap<>();
-    private final Set<String> seenFiles = new ConcurrentSkipListSet<>();
     private Integer skippedFiles = 0;
 
     public static void main(String[] args) {
@@ -454,21 +453,18 @@ public class Main {
     }
 
     private void uploadWithCacheSnapshot(String fileName, byte[] fileContents, String contentType, byte[] cacheSnapshot) {
-        this.seenFiles.add(fileName);
+        String hash = B2Sha1.hexSha1OfBytes(cacheSnapshot);
 
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to get SHA-1 digest");
+        String previousHash = newHashes.put(fileName, hash);
+        if (previousHash != null) {
+            if (previousHash.equals(hash)) {
+                System.out.println("[WARN] ignoring duplicate file " + fileName);
+                return;
+            }
+            throw new IllegalStateException("Tried to cache duplicate file: %s, previous hash: %s, new hash: %s".formatted(fileName, previousHash, hash));
         }
-        byte[] hash = digest.digest(cacheSnapshot);
-        String hashString = Base64.getUrlEncoder().encodeToString(hash);
 
-        newHashes.put(fileName, hashString);
-
-        if (this.previousHashes.getOrDefault(fileName, "").equals(hashString)) {
+        if (!hash.equals(this.previousHashes.get(fileName))) {
             this.skippedFiles++;
             return;
         }
@@ -505,7 +501,7 @@ public class Main {
 
         // Delete old files
         Set<String> oldFiles = new HashSet<>(this.previousHashes.keySet());
-        oldFiles.removeAll(this.seenFiles);
+        oldFiles.removeAll(this.newHashes.keySet());
 
         System.out.println("[INFO] Deleting " + oldFiles.size() + " file(s)");
 
