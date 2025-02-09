@@ -482,7 +482,7 @@ components:
       properties:
         maven:
           type: string
-          example: net.fabricmc:intermediary:1.12.2
+          example: net.fabricmc:intermediary:1.12.2:v2
           description: The maven identifier for this intermediary release.
         version:
           type: string
