@@ -10,6 +10,7 @@ import com.backblaze.b2.client.structures.B2FileVersion;
 import com.backblaze.b2.client.structures.B2UploadFileRequest;
 import com.backblaze.b2.util.B2Sha1;
 import com.google.gson.*;
+import org.quiltmc.meta.update.upload.FileUpload;
 
 import java.io.*;
 import java.lang.reflect.Array;
@@ -468,7 +469,7 @@ public class Main {
             this.skippedFiles++;
             return;
         }
-        this.files.put(fileName, new FileUpload(fileContents, contentType));
+        this.files.put(fileName, new FileUpload(fileContents, hash, contentType));
     }
 
     private void doUpload() {
