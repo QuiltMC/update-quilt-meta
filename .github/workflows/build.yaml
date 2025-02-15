@@ -5,10 +5,25 @@ on:
 
 env:
   JAVA_VERSION: 21
+  BUILD_NUMBER: ${{ github.run_number }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build with Gradle
+        run: ./gradlew build
 
+  ghcr:
+    runs-on: ubuntu-latest
     steps:
       - name: Setup ENV
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
@@ -42,3 +57,4 @@ jobs:
           build-args: |
             VERSION=${{ env.SHORT_SHA }}
             JAVA_VERSION=${{ env.JAVA_VERSION }}
+            BUILD_NUMBER=${{ env.BUILD_NUMBER }}
