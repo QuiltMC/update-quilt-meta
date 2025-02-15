@@ -1,21 +1,40 @@
 [versions]
-shadow = "8.1.1"
+shadow = "8.3.6"
 
+aws_sdk = "2.30.17"
 b2_sdk = "6.3.0"
+guava = "33.4.0-jre"
 gson = "2.12.1"
+jetbrains_annotations = "26.0.2"
+okhttp = "4.12.0"
+picocli = "4.7.6"
+slf4j = "2.0.16"
+tinylog = "2.7.0"
 
 junit = "5.11.4"
 
 [libraries]
+aws_bom = { module = "software.amazon.awssdk:bom", version.ref = "aws_sdk" }
+aws_s3 = { module = "software.amazon.awssdk:s3" }
 b2_core = { module = "com.backblaze.b2:b2-sdk-core", version.ref = "b2_sdk" }
 b2_httpclient = { module = "com.backblaze.b2:b2-sdk-httpclient", version.ref = "b2_sdk" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+jetbrains_annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains_annotations" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+picocli_annotations = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
+slf4j_api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+tinylog_slf4j = { module = "org.tinylog:slf4j-tinylog", version.ref = "tinylog" }
+tinylog_impl = { module = "org.tinylog:tinylog-impl", version.ref = "tinylog" }
 
 junit_api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit_engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit_platform_launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
 [bundles]
 b2 = ["b2_core", "b2_httpclient"]
+junit = ["junit_engine", "junit_platform_launcher"]
 
 [plugins]
-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

@@ -1,5 +1,5 @@
 # Gradle
-.gradle
+/.gradle/
 
 # Eclipse
 .checkstyle
@@ -10,21 +10,19 @@
 *.launch
 
 # Intellij/Idea
-.factorypath
-.idea
+/.idea/
 *.iml
 *.ipr
 *.iws
 
 # Build artifacts
-bin/
-build/
-jars/
-out/
-classes/
+/bin/
+/build/
+/jars/
+/out/
+/classes/
 
 # Debug artifacts
-run
 *.log
 
 # Windows
@@ -35,5 +33,4 @@ $RECYCLE.BIN/
 .DS_Store
 
 # Other
-/Meta/src/main/.aws-sam/
-/src/main/.aws-sam/
+/.tmp/
