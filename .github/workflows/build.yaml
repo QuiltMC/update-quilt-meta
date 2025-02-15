@@ -1,8 +1,7 @@
 name: Build container
 on:
   push:
-    branches:
-      - main
+    branches: [ '*' ]
 
 jobs:
   build:
