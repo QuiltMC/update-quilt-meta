@@ -3,6 +3,7 @@ shadow = "8.3.6"
 
 aws_sdk = "2.30.17"
 b2_sdk = "6.3.0"
+bouncycastle = "1.80"
 guava = "33.4.0-jre"
 gson = "2.12.1"
 jetbrains_annotations = "26.0.2"
@@ -18,6 +19,7 @@ aws_bom = { module = "software.amazon.awssdk:bom", version.ref = "aws_sdk" }
 aws_s3 = { module = "software.amazon.awssdk:s3" }
 b2_core = { module = "com.backblaze.b2:b2-sdk-core", version.ref = "b2_sdk" }
 b2_httpclient = { module = "com.backblaze.b2:b2-sdk-httpclient", version.ref = "b2_sdk" }
+bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 jetbrains_annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains_annotations" }

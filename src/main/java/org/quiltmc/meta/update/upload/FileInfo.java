@@ -2,9 +2,9 @@ package org.quiltmc.meta.update.upload;
 
 import com.backblaze.b2.client.contentSources.B2ByteArrayContentSource;
 import com.backblaze.b2.client.contentSources.B2ContentSource;
-import com.backblaze.b2.util.B2Sha1;
 import com.google.gson.reflect.TypeToken;
 import org.quiltmc.meta.update.Constants;
+import org.quiltmc.meta.update.util.hash.HashFunction;
 import org.quiltmc.meta.update.util.http.ContentType;
 
 import java.io.ByteArrayInputStream;
@@ -29,7 +29,7 @@ public record FileInfo(byte[] content, ContentType contentType, byte[] manifestS
             throw new IllegalStateException("File is empty");
         }
 
-        var sha1 = B2Sha1.binarySha1OfBytes(content);
+        var sha1 = HashFunction.SHA1.createHash(content).bytes();
         return new FileInfo(content, contentType, manifestSha1.length > 0 ? manifestSha1 : sha1, sha1);
     }
 

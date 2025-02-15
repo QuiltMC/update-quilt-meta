@@ -1,11 +1,11 @@
 package org.quiltmc.meta.update.collector.v3;
 
-import com.backblaze.b2.util.B2Sha1;
 import org.jetbrains.annotations.Nullable;
 import org.quiltmc.meta.update.Constants;
 import org.quiltmc.meta.update.model.v3.LauncherProfileV3;
 import org.quiltmc.meta.update.upload.FileInfo;
 import org.quiltmc.meta.update.upload.InputCollector;
+import org.quiltmc.meta.update.util.hash.HashFunction;
 import org.quiltmc.meta.update.util.http.ContentType;
 import org.quiltmc.meta.update.util.maven.MavenRepository;
 
@@ -53,13 +53,13 @@ public class LauncherProfileCollectorV3 extends InputCollector {
 
                     // need to compute the hash with constant timestamps, otherwise all profiles would be constantly flagged as needing updates
                     var profileForCache = profileType.create("quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion), gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, Instant.EPOCH, Instant.EPOCH);
-                    var hash = B2Sha1.binarySha1OfBytes(Constants.GSON.toJson(profileForCache).getBytes(StandardCharsets.UTF_8));
+                    var hash = HashFunction.SHA1.createHash(Constants.GSON.toJson(profileForCache).getBytes(StandardCharsets.UTF_8));
 
                     var profile = profileType.create("quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion), gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, time, time);
                     var profileBytes = Constants.GSON.toJson(profile).getBytes(StandardCharsets.UTF_8);
 
                     //TODO change path in v4: profiles/<mcVer>/<loaderVer>/client + profiles/<mcVer>/<loaderVer>/server
-                    output.accept("v3/versions/loader/%s/%s/%s".formatted(gameVersion, launcherMetadata.loader().version(), profileType.getUrlPath()), FileInfo.withHashValue(profileBytes, ContentType.APPLICATION_JSON, hash));
+                    output.accept("v3/versions/loader/%s/%s/%s".formatted(gameVersion, launcherMetadata.loader().version(), profileType.getUrlPath()), FileInfo.withHashValue(profileBytes, ContentType.APPLICATION_JSON, hash.bytes()));
                 }
             });
 

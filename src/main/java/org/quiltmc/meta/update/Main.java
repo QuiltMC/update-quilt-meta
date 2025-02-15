@@ -43,6 +43,7 @@ public class Main implements Callable<Integer> {
     private CacheOptions cacheOptions;
 
     public static void main(String[] args) {
+        Bootstrap.initialize();
         LOGGER.info("Running build {}", Constants.TOOL_VERSION);
 
         int exitCode = new CommandLine(new Main()).execute(args);
