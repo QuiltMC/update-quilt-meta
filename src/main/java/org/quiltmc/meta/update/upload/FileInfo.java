@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HexFormat;
+import java.util.Objects;
 
 public record FileInfo(byte[] content, ContentType contentType, byte[] manifestSha1Bytes, byte[] sha1Bytes) implements B2ContentSource {
 
@@ -87,5 +88,18 @@ public record FileInfo(byte[] content, ContentType contentType, byte[] manifestS
     @Override
     public B2ContentSource createContentSourceWithRangeOrNull(long start, long length) {
         return B2ByteArrayContentSource.build(Arrays.copyOfRange(content(), (int) start, (int) (start + length)));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof FileInfo(byte[] content1, ContentType contentType1, byte[] manifestSha1_1, byte[] sha1_1)
+               && contentType() == contentType1
+               && Arrays.equals(sha1Bytes(), sha1_1)
+               && Arrays.equals(content(), content1);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(contentType(), Arrays.hashCode(sha1Bytes()));
     }
 }

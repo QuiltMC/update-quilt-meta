@@ -46,7 +46,7 @@ public class LauncherProfileCollectorV3 extends InputCollector {
 
                 for (var profileType : ProfileType.values()) {
 
-                    List<LauncherProfileV3.Library> libraries = Stream.concat(profileType.libraryKeysToInclude.stream().flatMap(key -> launcherMetadata.launcherMeta().libraries().get(key).stream()).map(LauncherProfileV3.Library::fromLauncherMeta), Stream.of(hashed, intermediary, loader)).toList();
+                    List<LauncherProfileV3.Library> libraries = Stream.concat(profileType.getLibraryKeysToInclude().stream().flatMap(key -> launcherMetadata.launcherMeta().libraries().get(key).stream()).map(LauncherProfileV3.Library::fromLauncherMeta), Stream.of(hashed, intermediary, loader)).toList();
 
                     var mainClass = Optional.ofNullable(launcherMetadata.launcherMeta().mainClass()).map(map -> map.get(profileType.getName())).orElse(null);
                     var serverLauncherMainClass = mainClass != null ? launcherMetadata.launcherMeta().mainClass().get("serverLauncher") : null;
