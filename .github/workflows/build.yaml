@@ -3,6 +3,8 @@ on:
   push:
     branches: [ '*' ]
 
+env:
+  JAVA_VERSION: 21
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,3 +41,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ env.SHORT_SHA }}
+            JAVA_VERSION=${{ env.JAVA_VERSION }}
