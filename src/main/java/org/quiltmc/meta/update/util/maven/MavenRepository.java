@@ -3,7 +3,11 @@ package org.quiltmc.meta.update.util.maven;
 import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
+import org.quiltmc.meta.update.Constants;
+import org.quiltmc.meta.update.util.hash.Hash;
+import org.quiltmc.meta.update.util.hash.HashFunction;
 import org.quiltmc.meta.update.util.http.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +18,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -21,6 +26,8 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public class MavenRepository implements Closeable {
 
@@ -37,9 +44,7 @@ public class MavenRepository implements Closeable {
         var cacheDirFile = this.cacheDir.toFile();
         cacheDirFile.deleteOnExit();
         this.cache = new Cache(cacheDirFile, CACHE_SIZE);
-        this.client = HttpUtils.newClient()
-                .cache(cache)
-                .build();
+        this.client = HttpUtils.newClient().cache(cache).build();
     }
 
     public ArtifactMetadata getMetadata(String group, String name) {
@@ -99,11 +104,11 @@ public class MavenRepository implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if(cache != null) {
+        if (cache != null) {
             cache.close();
         }
 
-        if(cacheDir != null) {
+        if (cacheDir != null) {
             LOGGER.debug("Deleting cache dir for {}...", this.url);
             Files.walkFileTree(cacheDir, new SimpleFileVisitor<>() {
                 @Override
@@ -209,6 +214,7 @@ public class MavenRepository implements Closeable {
 
         public class Artifact {
             public final String version;
+            private CompletableFuture<FileInfo> fileInfo;
 
             public Artifact(String version) {
                 this.version = version;
@@ -221,6 +227,100 @@ public class MavenRepository implements Closeable {
             public URI url() {
                 return MavenRepository.this.url.resolve(String.format("%s/%s/%s/%s-%s.jar", ArtifactMetadata.this.group.replace('.', '/'), ArtifactMetadata.this.name, this.version, ArtifactMetadata.this.name, this.version));
             }
+
+            public synchronized CompletableFuture<FileInfo> fileInfo(Executor executor) {
+                return Objects.requireNonNullElseGet(this.fileInfo, () -> this.fileInfo = CompletableFuture.supplyAsync(() -> {
+                    Map<HashFunction, Hash> hashes = new EnumMap<>(HashFunction.class);
+                    long fileSize = 0L;
+                    boolean needsManualDownload = false;
+
+                    try {
+                        // first try gradle module
+                        var moduleRequest = new Request.Builder().get().url(url().toString() + ".module").build();
+                        try (var body = makeRequest(moduleRequest); var reader = body.charStream()) {
+                            var gradleFileInfo = Optional.ofNullable(Constants.GSON.fromJson(reader, GradleModuleMetadata.class)).flatMap(GradleModuleMetadata::mainFileInfo).orElse(null);
+                            if(gradleFileInfo != null) {
+                                fileSize = gradleFileInfo.size();
+                                hashes.putAll(gradleFileInfo.hashes());
+                            }
+                        }
+
+                        for (HashFunction hashFunction : HashFunction.values()) {
+                            if (hashes.containsKey(hashFunction)) {
+                                continue;
+                            }
+                            if (hashFunction.getMavenFileSuffix() == null) {
+                                needsManualDownload = true;
+                                continue;
+                            }
+
+                            var request = new Request.Builder().url(url().toString() + hashFunction.getMavenFileSuffix()).get().build();
+                            try (var body = makeRequest(request); var stream = body.byteStream()) {
+                                hashes.put(hashFunction, hashFunction.createHash(stream));
+                            }
+                        }
+                    } catch (IOException e) {
+                        LOGGER.warn("unable to download one or more hash files for {}, falling back to manual download", url(), e);
+                        needsManualDownload = true;
+                    }
+
+                    // if we dont need the full file, only make a HEAD request
+                    if (!needsManualDownload) {
+                        var request = new Request.Builder().url(url().toString()).head().build();
+                        try (var body = makeRequest(request)) {
+                            fileSize = body.contentLength();
+                        } catch (IOException e) {
+                            LOGGER.warn("Failed HEAD request for {}, retrying GET request...", url(), e);
+                            needsManualDownload = true;
+                        }
+                    }
+
+                    // catch cases where server sends an "unknown" content length
+                    if (fileSize <= 0L) {
+                        needsManualDownload = true;
+                    }
+
+                    if (needsManualDownload) {
+                        var request = new Request.Builder().url(url().toString()).get().build();
+                        try (var body = makeRequest(request)) {
+                            // maven jars are probably small enough that we can read the whole file into memory,
+                            // even for mappings files
+                            var bytes = body.bytes();
+                            fileSize = bytes.length;
+
+                            for (HashFunction hashFunction : HashFunction.values()) {
+                                hashes.computeIfAbsent(hashFunction, key -> key.createHash(bytes));
+                            }
+                        } catch (IOException e) {
+                            throw new UncheckedIOException("unable to manually retrieve file metadata for " + url(), e);
+                        }
+                    }
+
+                    return new FileInfo(fileSize, Collections.unmodifiableMap(hashes));
+                }, executor));
+            }
+
+            public record FileInfo(long fileSize, Map<HashFunction, Hash> hashes) {
+
+                public Hash getHash(HashFunction type) {
+                    return hashes.get(type);
+                }
+            }
+        }
+    }
+
+    public ResponseBody makeRequest(Request request) throws IOException {
+        try (var response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException("HTTP " + response.code() + " - " + response.message());
+            }
+
+            var body = response.body();
+            if (body == null) {
+                throw new IOException("Received empty response body");
+            }
+
+            return body;
         }
     }
 }

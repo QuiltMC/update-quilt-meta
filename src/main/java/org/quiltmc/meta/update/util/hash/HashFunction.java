@@ -1,6 +1,7 @@
 package org.quiltmc.meta.update.util.hash;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.jetbrains.annotations.Nullable;
 import org.quiltmc.meta.update.Bootstrap;
 
 import java.io.IOException;
@@ -11,9 +12,9 @@ import java.security.NoSuchProviderException;
 
 public enum HashFunction {
 
-    SHA1("sha1", "SHA-1"),
-    SHA256("sha256", "SHA-256"),
-    SHA512("sha512", "SHA-512");
+    SHA1("sha1", "SHA-1", ".sha1"),
+    SHA256("sha256", "SHA-256", ".sha256"),
+    SHA512("sha512", "SHA-512", ".sha512");
 
     static {
         // ensure hash algorithms are initialized
@@ -22,14 +23,21 @@ public enum HashFunction {
 
     private final String name;
     private final String messageDigestName;
+    @Nullable
+    private final String mavenFileSuffix;
 
-    HashFunction(String name, String messageDigestName) {
+    HashFunction(String name, String messageDigestName, @Nullable String mavenFileSuffix) {
         this.name = name;
         this.messageDigestName = messageDigestName;
+        this.mavenFileSuffix = mavenFileSuffix;
     }
 
     public String getName() {
         return name;
+    }
+
+    public @Nullable String getMavenFileSuffix() {
+        return mavenFileSuffix;
     }
 
     public Hash createHash(byte[] input) {
