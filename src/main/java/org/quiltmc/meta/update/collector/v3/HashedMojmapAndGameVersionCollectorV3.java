@@ -32,7 +32,7 @@ public class HashedMojmapAndGameVersionCollectorV3 extends InputCollector {
 
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
-        return CompletableFuture.supplyAsync(() -> getVersions(maven), executor).thenAcceptAsync(hashed -> {
+        return getVersions(maven, executor).thenAcceptAsync(hashed -> {
             var minecraftMeta = MinecraftMeta.get(Constants.GSON);
 
             hashed.forEach((gameVersion, version) -> {
@@ -55,8 +55,11 @@ public class HashedMojmapAndGameVersionCollectorV3 extends InputCollector {
         }, executor);
     }
 
-    public static Map<String, HashedMojmapVersionV3> getVersions(MavenRepository maven) {
-        return maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "hashed").stream().map(artifact -> new HashedMojmapVersionV3(artifact.mavenId(), artifact.version)).collect(Collectors.toMap(HashedMojmapVersionV3::version, Function.identity()));
+    public static CompletableFuture<Map<String, HashedMojmapVersionV3>> getVersions(MavenRepository maven, Executor executor) {
+        return CompletableFuture.supplyAsync(() -> maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "hashed"), executor).thenApply(metadata -> metadata.stream().map(artifact -> {
+            var fileInfo = artifact.fileInfo(executor).join();
+            return new HashedMojmapVersionV3(artifact.mavenId(), artifact.version, fileInfo.fileSize(), fileInfo.formatHashesForJson());
+        }).collect(Collectors.toMap(HashedMojmapVersionV3::version, Function.identity())));
     }
 
     public static List<GameVersionV3> getGameVersions(MinecraftMeta minecraftMeta, Predicate<String> isValidVersion) {

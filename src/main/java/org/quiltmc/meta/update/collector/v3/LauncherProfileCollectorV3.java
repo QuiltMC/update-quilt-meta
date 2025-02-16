@@ -38,7 +38,7 @@ public class LauncherProfileCollectorV3 extends InputCollector {
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
         var time = Instant.now();
 
-        return QuiltLauncherMetadataCollectorV3.getVersions(quiltMaven, fabricMaven, executor).thenAcceptAsync(gameLauncherVersions -> {
+        return QuiltLauncherMetadataCollectorV3.getVersions(quiltMaven, fabricMaven, executor).thenAccept(gameLauncherVersions -> {
             gameLauncherVersions.forEach((gameVersion, launcherMetadata) -> {
                 var hashed = new LauncherProfileV3.Library(launcherMetadata.hashed().maven(), quiltMaven.url().toString());
                 var intermediary = new LauncherProfileV3.Library(launcherMetadata.intermediary().maven(), fabricMaven.url().toString());
@@ -50,12 +50,13 @@ public class LauncherProfileCollectorV3 extends InputCollector {
 
                     var mainClass = Optional.ofNullable(launcherMetadata.launcherMeta().mainClass()).map(map -> map.get(profileType.getName())).orElse(null);
                     var serverLauncherMainClass = mainClass != null ? launcherMetadata.launcherMeta().mainClass().get("serverLauncher") : null;
+                    var profileId = "quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion);
 
                     // need to compute the hash with constant timestamps, otherwise all profiles would be constantly flagged as needing updates
-                    var profileForCache = profileType.create("quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion), gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, Instant.EPOCH, Instant.EPOCH);
+                    var profileForCache = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, Instant.EPOCH, Instant.EPOCH);
                     var hash = HashFunction.SHA1.createHash(Constants.GSON.toJson(profileForCache).getBytes(StandardCharsets.UTF_8));
 
-                    var profile = profileType.create("quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion), gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, time, time);
+                    var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, time, time);
                     var profileBytes = Constants.GSON.toJson(profile).getBytes(StandardCharsets.UTF_8);
 
                     //TODO change path in v4: profiles/<mcVer>/<loaderVer>/client + profiles/<mcVer>/<loaderVer>/server
@@ -64,7 +65,7 @@ public class LauncherProfileCollectorV3 extends InputCollector {
             });
 
             LOGGER.info("Generated {} launch profiles", gameLauncherVersions.size() * ProfileType.values().length);
-        }, executor);
+        });
     }
 
     private enum ProfileType {

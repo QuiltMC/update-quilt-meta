@@ -26,14 +26,17 @@ public class QuiltInstallerVersionCollectorV3 extends InputCollector {
 
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
-        return CompletableFuture.supplyAsync(() -> getVersions(quiltMaven), executor).thenAcceptAsync(versions -> {
+        return getVersions(quiltMaven, executor).thenAccept(versions -> {
             output.accept("v3/versions/installer", FileInfo.jsonList(versions));
 
             LOGGER.info("Found {} installer versions", versions.size());
-        }, executor);
+        });
     }
 
-    public static List<QuiltInstallerVersionV3> getVersions(MavenRepository maven) {
-        return maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "quilt-installer").stream().map(artifact -> new QuiltInstallerVersionV3(artifact.mavenId(), artifact.version, artifact.url().toString())).toList();
+    public static CompletableFuture<List<QuiltInstallerVersionV3>> getVersions(MavenRepository maven, Executor executor) {
+        return CompletableFuture.supplyAsync(() -> maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "quilt-installer"), executor).thenApply(mavenMetadata -> mavenMetadata.stream().map(artifact -> {
+            var fileInfo = artifact.fileInfo(executor).join();
+            return new QuiltInstallerVersionV3(artifact.mavenId(), artifact.version, artifact.url().toString(), fileInfo.fileSize(), fileInfo.formatHashesForJson());
+        }).toList());
     }
 }

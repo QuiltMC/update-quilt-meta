@@ -27,7 +27,7 @@ public class QuiltMappingsCollectorV3 extends InputCollector {
 
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
-        return CompletableFuture.supplyAsync(() -> getVersions(quiltMaven)).thenAcceptAsync(gameQuiltMappings -> {
+        return getVersions(quiltMaven, executor).thenAccept(gameQuiltMappings -> {
             gameQuiltMappings.asMap().forEach((gameVersion, mappingsVersions) -> output.accept("v3/versions/quilt-mappings/" + gameVersion, FileInfo.jsonList(mappingsVersions)));
 
             output.accept("v3/versions/quilt-mappings", FileInfo.jsonList(gameQuiltMappings.values()));
@@ -36,7 +36,7 @@ public class QuiltMappingsCollectorV3 extends InputCollector {
             output.accept("v3/versions/game/quilt-mappings", FileInfo.jsonList(gameQuiltMappings.keys()));
 
             LOGGER.info("Found {} quilt mappings", gameQuiltMappings.size());
-        }, executor);
+        });
     }
 
     private static String stripInfo(String version) {
@@ -49,18 +49,22 @@ public class QuiltMappingsCollectorV3 extends InputCollector {
         }
     }
 
-    public static Multimap<String, QuiltMappingsVersionV3> getVersions(MavenRepository maven) {
-        Multimap<String, QuiltMappingsVersionV3> gameQuiltMappings = MultimapBuilder.linkedHashKeys().hashSetValues().build();
-        maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "quilt-mappings").forEach(artifact -> {
-            var mappingsVersion = artifact.version;
-            var gameVersion = stripInfo(mappingsVersion);
-            var separator = mappingsVersion.contains("+build.") ? "+build." : ".";
-            var buildNumber = Integer.parseInt(mappingsVersion.substring(mappingsVersion.lastIndexOf(".") + 1));
+    public static CompletableFuture<Multimap<String, QuiltMappingsVersionV3>> getVersions(MavenRepository maven, Executor executor) {
+        return CompletableFuture.supplyAsync(() -> maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "quilt-mappings"), executor).thenApply(mavenMetadata -> {
+            Multimap<String, QuiltMappingsVersionV3> gameQuiltMappings = MultimapBuilder.linkedHashKeys().hashSetValues().build();
+            mavenMetadata.forEach(artifact -> {
+                var mappingsVersion = artifact.version;
+                var gameVersion = stripInfo(mappingsVersion);
+                var separator = mappingsVersion.contains("+build.") ? "+build." : ".";
+                var buildNumber = Integer.parseInt(mappingsVersion.substring(mappingsVersion.lastIndexOf(".") + 1));
 
-            var version = new QuiltMappingsVersionV3(artifact.mavenId(), mappingsVersion, gameVersion, buildNumber, separator, gameVersion);
-            gameQuiltMappings.put(gameVersion, version);
+                var fileInfo = artifact.fileInfo(executor).join();
+
+                var version = new QuiltMappingsVersionV3(artifact.mavenId(), mappingsVersion, gameVersion, buildNumber, separator, gameVersion, fileInfo.fileSize(), fileInfo.formatHashesForJson());
+                gameQuiltMappings.put(gameVersion, version);
+            });
+
+            return gameQuiltMappings;
         });
-
-        return gameQuiltMappings;
     }
 }

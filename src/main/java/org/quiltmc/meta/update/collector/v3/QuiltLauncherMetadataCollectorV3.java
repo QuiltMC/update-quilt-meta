@@ -60,6 +60,7 @@ public class QuiltLauncherMetadataCollectorV3 extends InputCollector {
             var artifactUrl = artifact.url().toString();
             var metaUrl = URI.create(artifactUrl.substring(0, artifactUrl.lastIndexOf('.')) + ".json");
 
+            // TODO use httpclient
             try (var reader = new InputStreamReader(metaUrl.toURL().openStream())) {
                 var loaderMetadata = Constants.GSON.fromJson(reader, QuiltLoaderMetadataJson.class);
                 return Pair.of(artifact.version, loaderMetadata);
@@ -67,8 +68,8 @@ public class QuiltLauncherMetadataCollectorV3 extends InputCollector {
                 throw new UncheckedIOException("Connection error: " + metaUrl, e);
             }
         }, executor)).toList()).thenApplyAsync(futures -> {
-            Map<String, QuiltLoaderVersionV3> loaderVersions = QuiltLoaderVersionCollectorV3.getVersions(quiltMaven).stream().collect(Collectors.toMap(QuiltLoaderVersionV3::version, Function.identity()));
-            Map<String, HashedMojmapVersionV3> hashedVersions = HashedMojmapAndGameVersionCollectorV3.getVersions(quiltMaven);
+            Map<String, QuiltLoaderVersionV3> loaderVersions = QuiltLoaderVersionCollectorV3.getVersions(quiltMaven, executor).join().stream().collect(Collectors.toMap(QuiltLoaderVersionV3::version, Function.identity()));
+            Map<String, HashedMojmapVersionV3> hashedVersions = HashedMojmapAndGameVersionCollectorV3.getVersions(quiltMaven, executor).join();
             Map<String, IntermediaryVersionV3> intermediaryVersions = IntermediaryVersionCollectorV3.getVersions(fabricMaven);
 
             CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();

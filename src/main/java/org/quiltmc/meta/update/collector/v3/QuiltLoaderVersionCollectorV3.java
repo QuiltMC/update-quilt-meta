@@ -26,20 +26,22 @@ public class QuiltLoaderVersionCollectorV3 extends InputCollector {
 
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
-        return CompletableFuture.supplyAsync(() -> getVersions(quiltMaven), executor).thenAccept(versions -> {
+        return getVersions(quiltMaven, executor).thenAccept(versions -> {
             output.accept("v3/versions/loader", FileInfo.jsonList(versions));
 
             LOGGER.info("Found {} quilt loader versions", versions.size());
         });
     }
 
-    public static List<QuiltLoaderVersionV3> getVersions(MavenRepository maven) {
-        return maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "quilt-loader").stream().map(artifact -> {
+    public static CompletableFuture<List<QuiltLoaderVersionV3>> getVersions(MavenRepository maven, Executor executor) {
+        return CompletableFuture.supplyAsync(() -> maven.getMetadata(Constants.QUILT_MAVEN_GROUP, "quilt-loader"), executor).thenApply(mavenMetadata -> mavenMetadata.stream().map(artifact -> {
             var loaderVersion = artifact.version;
             var separator = loaderVersion.contains("+build.") ? "+build." : ".";
             var buildNumber = Integer.parseInt(loaderVersion.substring(loaderVersion.lastIndexOf(".") + 1));
 
-            return new QuiltLoaderVersionV3(artifact.mavenId(), loaderVersion, buildNumber, separator);
-        }).toList();
+            var fileInfo = artifact.fileInfo(executor).join();
+
+            return new QuiltLoaderVersionV3(artifact.mavenId(), loaderVersion, buildNumber, separator, fileInfo.fileSize(), fileInfo.formatHashesForJson());
+        }).toList());
     }
 }

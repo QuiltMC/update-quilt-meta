@@ -31,16 +31,16 @@ public class RootVersionListCollectorV3 extends InputCollector {
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
         return CompletableFuture.runAsync(() -> {
-            Map<String, HashedMojmapVersionV3> hashed = HashedMojmapAndGameVersionCollectorV3.getVersions(quiltMaven);
+            Map<String, HashedMojmapVersionV3> hashed = HashedMojmapAndGameVersionCollectorV3.getVersions(quiltMaven, executor).join();
             List<GameVersionV3> game = HashedMojmapAndGameVersionCollectorV3.getGameVersions(MinecraftMeta.get(Constants.GSON), hashed::containsKey);
-            Multimap<String, QuiltMappingsVersionV3> mappings = QuiltMappingsCollectorV3.getVersions(quiltMaven);
-            List<QuiltLoaderVersionV3> loader = QuiltLoaderVersionCollectorV3.getVersions(quiltMaven);
-            List<QuiltInstallerVersionV3> installer = QuiltInstallerVersionCollectorV3.getVersions(quiltMaven);
+            Multimap<String, QuiltMappingsVersionV3> mappings = QuiltMappingsCollectorV3.getVersions(quiltMaven, executor).join();
+            List<QuiltLoaderVersionV3> loader = QuiltLoaderVersionCollectorV3.getVersions(quiltMaven, executor).join();
+            List<QuiltInstallerVersionV3> installer = QuiltInstallerVersionCollectorV3.getVersions(quiltMaven, executor).join();
 
             var versionList = new VersionListV3(game, mappings.values(), hashed.values(), loader, installer);
             output.accept("v3/versions", FileInfo.json(versionList));
 
             LOGGER.info("Generated root version list");
-        });
+        }, executor);
     }
 }

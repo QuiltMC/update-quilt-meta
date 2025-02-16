@@ -1,9 +1,9 @@
 package org.quiltmc.meta.update.collector.v3;
 
-import org.quiltmc.meta.update.util.http.ContentType;
 import org.quiltmc.meta.update.upload.FileInfo;
 import org.quiltmc.meta.update.upload.InputCollector;
 import org.quiltmc.meta.update.util.Pair;
+import org.quiltmc.meta.update.util.http.ContentType;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -36,7 +36,7 @@ public class StaticFileCollectorV3 extends InputCollector {
         return CompletableFuture.runAsync(() -> {
             this.fileInfos.forEach((apiPath, pair) -> {
                 try (var stream = StaticFileCollectorV3.class.getClassLoader().getResourceAsStream("static/" + pair.first())) {
-                    if(stream == null) {
+                    if (stream == null) {
                         throw new FileNotFoundException("static://" + pair.first());
                     }
 
