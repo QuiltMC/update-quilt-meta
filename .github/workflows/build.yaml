@@ -2,6 +2,7 @@ name: Build container
 on:
   push:
     branches: [ '*' ]
+  pull_request:
 
 env:
   JAVA_VERSION: 21
