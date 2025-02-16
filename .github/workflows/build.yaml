@@ -32,11 +32,11 @@ jobs:
       - name: Create Shadow Jar
         run: ./gradlew shadowJar
         env:
-          VERSION: ${{ env.GITHUB_SHA }}
+          VERSION: ${{ env.SHORT_SHA }}
       - name: Upload Shadow Jar
         uses: actions/upload-artifact@v4
         with:
-          name: update-quilt-meta-jar-${{ env.GITHUB_SHA }}
+          name: update-quilt-meta-jar-${{ env.SHORT_SHA }}
           path: build/libs/*.jar
 
   ghcr:
@@ -90,13 +90,13 @@ jobs:
       - name: Download Jar
         uses: actions/download-artifact@v4
         with:
-          name: update-quilt-meta-jar-${{ env.GITHUB_SHA }}
+          name: update-quilt-meta-jar-${{ env.SHORT_SHA }}
       - name: Generate Debug Meta Files
         run:
           java -jar update-quilt-meta-${{ env.SHORT_SHA }}.jar --local-output-dir ./meta-files
       - name: Upload Meta Files
         uses: actions/upload-artifact@v4
         with:
-          name: quilt-meta-files-${{ env.GITHUB_SHA }}-debug
+          name: quilt-meta-files-${{ env.SHORT_SHA }}-debug
           path: ./meta-files/**
           compression-level: '9'
