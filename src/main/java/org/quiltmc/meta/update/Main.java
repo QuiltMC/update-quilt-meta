@@ -114,7 +114,7 @@ public class Main implements Callable<Integer> {
             // @formatter:off
             List<InputCollector> inputs = List.of(
                     new HashedMojmapAndGameVersionCollectorV3(quiltMaven),
-                    new IntermediaryVersionCollectorV3(fabricMaven),
+                    new IntermediaryVersionCollectorV3(quiltMaven, fabricMaven),
                     new QuiltMappingsCollectorV3(quiltMaven),
                     new QuiltInstallerVersionCollectorV3(quiltMaven),
                     new QuiltLoaderVersionCollectorV3(quiltMaven),
