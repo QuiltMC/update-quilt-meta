@@ -92,9 +92,11 @@ jobs:
       - name: Generate Debug Meta Files
         run:
           java -jar update-quilt-meta-${{ env.SHORT_SHA }}-all.jar --local-output-dir ./meta-files
+      - name: Compress Files
+        run: tar -czf quilt-meta-files-${{ env.SHORT_SHA }}-debug.tar.gz ./meta-files
       - name: Upload Meta Files
         uses: actions/upload-artifact@v4
         with:
           name: quilt-meta-files-${{ env.SHORT_SHA }}-debug
-          path: ./meta-files/**
-          compression-level: '9'
+          path: quilt-meta-files-${{ env.SHORT_SHA }}-debug.tar.gz
+          compression-level: '0'
