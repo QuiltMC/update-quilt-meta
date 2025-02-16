@@ -89,7 +89,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: update-quilt-meta-jar-${{ env.SHORT_SHA }}
-      - name: [DEBUG] List Files
+      - name: DEBUG List Files
         run: ls -R
 #      - name: Generate Debug Meta Files
 #        run:
