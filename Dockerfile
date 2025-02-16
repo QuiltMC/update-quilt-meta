@@ -12,6 +12,6 @@ FROM eclipse-temurin:${JAVA_VERSION} AS runtime
 
 WORKDIR /app
 
-COPY --from=builder /src/build/libs/*-all.jar app.jar
+COPY --from=builder /src/build/libs/*-all.jar update-quilt-meta.jar
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/update-quilt-meta.jar"]
