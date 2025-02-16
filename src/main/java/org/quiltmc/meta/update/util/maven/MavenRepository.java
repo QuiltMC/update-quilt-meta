@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class MavenRepository implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MavenRepository.class);
-    private static final long CACHE_SIZE = 50L * 1024L * 1024L;
+    private static final long CACHE_SIZE = 500L * 1024L * 1024L;
     private final URI url;
     private final Path cacheDir;
     private final Cache cache;
