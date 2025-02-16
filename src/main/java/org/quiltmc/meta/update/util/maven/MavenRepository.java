@@ -238,8 +238,8 @@ public class MavenRepository implements Closeable {
                     AtomicLong fileSize = new AtomicLong(0L);
                     boolean needsManualDownload = false;
 
+                    // first try gradle module, if it exists
                     try {
-                        // first try gradle module
                         var moduleRequest = new Request.Builder().get().url(url().toString() + ".module").build();
                         makeFileRequest(moduleRequest, body -> {
                             try (var reader = body.charStream()) {
@@ -250,11 +250,17 @@ public class MavenRepository implements Closeable {
                                 }
                             }
                         });
+                    } catch (IOException e) {
+                        LOGGER.trace("unable to retrieve gradle module metadata for {}, trying hash files...", url(), e);
+                    }
 
+                    try {
                         for (HashFunction hashFunction : HashFunction.values()) {
                             if (hashes.containsKey(hashFunction)) {
                                 continue;
                             }
+
+                            // hash does not exist and cannot be retrieved from maven
                             if (hashFunction.getMavenFileSuffix() == null) {
                                 needsManualDownload = true;
                                 continue;
@@ -278,7 +284,7 @@ public class MavenRepository implements Closeable {
                         try {
                             makeFileRequest(request, body -> fileSize.set(body.contentLength()));
                         } catch (IOException e) {
-                            LOGGER.warn("Failed HEAD request for {}, retrying GET request...", url(), e);
+                            LOGGER.debug("Failed HEAD request for {}, retrying GET request...", url(), e);
                             needsManualDownload = true;
                         }
                     }
