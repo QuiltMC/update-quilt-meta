@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Quilt Meta API
-  version: "2023-01-29"
+  version: "2025-02-16"
   description: |
     This is the API for the Quilt Meta server. You can use it to inspect various information about our releases.
     
@@ -435,12 +435,18 @@ components:
       properties:
         version:
           type: string
-          example: 1.12.2
+          example: 1.14.4
           description: The version for this hashed release.
         maven:
           type: string
-          example: org.quiltmc:hashed:1.12.2
+          example: org.quiltmc:hashed:1.14.4
           description: The maven identifier for this hashed release.
+        file_size:
+          type: integer
+          example: 438242
+          description: The size of the file in bytes
+        hashes:
+          $ref: '#/components/schemas/HashesV3'
 
     LoaderVersionV3:
       type: object
@@ -455,11 +461,17 @@ components:
           description: The build number of the loader
         maven:
           type: string
-          example: org.quiltmc:quilt-loader:0.1.0
+          example: org.quiltmc:quilt-loader:0.27.0
         version:
           type: string
-          example: 0.1.0
+          example: 0.27.0
           description: The version for this loader release.
+        file_size:
+          type: integer
+          example: 2492855
+          description: The size of the file in bytes
+        hashes:
+          $ref: '#/components/schemas/HashesV3'
 
     InstallerVersionV3:
       type: object
@@ -470,12 +482,18 @@ components:
           description: The URL to the installer download.
         maven:
           type: string
-          example: org.quiltmc:quilt-installer:0.1.0
+          example: org.quiltmc:quilt-installer:0.3.1
           description: The maven identifier for this installer release.
         version:
           type: string
-          example: 0.1.0
+          example: 0.3.1
           description: The version for this installer release.
+        file_size:
+          type: integer
+          example: 93374
+          description: The size of the file in bytes
+        hashes:
+          $ref: '#/components/schemas/HashesV3'
 
     IntermediaryVersionV3:
       type: object
@@ -531,6 +549,22 @@ components:
                 serverLauncher:
                   type: string
                   example: org.quiltmc.loader.impl.launch.server.QuiltServerLauncher
+
+    HashesV3:
+      type: object
+      properties:
+        sha1:
+          type: string
+          example: "f2c4b5fddac955e7f47aa057928d351a2f0ac522"
+          description: The SHA-1 hash
+        sha256:
+          type: string
+          example: 0d5ee3eb0115e8189f7e757fb752ac5e19de9f434bffb2c18e8daf0cb6514278
+          description: The SHA-256 hash
+        sha512:
+          type: string
+          example: b9ea70023183ef4b569288bda6f9a4aef6b10c1c76748bf094ebe2d14e4d39e044e367088712777617e8caa1b9e7b007466bfc3f6f006a494d20e8a668a023ab
+          description: The SHA-512 hash
 
     LibraryRef:
       type: object
