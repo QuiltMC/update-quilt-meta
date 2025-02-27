@@ -31,7 +31,11 @@ public class IntermediaryVersionCollectorV3 extends InputCollector {
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
         return CompletableFuture.supplyAsync(() -> getVersions(fabricMaven), executor).thenAcceptBothAsync(HashedMojmapAndGameVersionCollectorV3.getVersions(quiltMaven, executor), (intermediary, hashed) -> {
-            intermediary = intermediary.entrySet().stream().filter(entry -> hashed.containsKey(entry.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            intermediary = intermediary.entrySet().stream().filter(entry -> {
+                // parity with previous data:
+                // only generate versions where both hashed and intermediary exist
+                return hashed.containsKey(entry.getKey());
+            }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             intermediary.forEach((gameVersion, version) -> {
                 // TODO remove in v4
                 output.accept("v3/versions/intermediary/" + gameVersion, FileInfo.jsonList(List.of(version)));
