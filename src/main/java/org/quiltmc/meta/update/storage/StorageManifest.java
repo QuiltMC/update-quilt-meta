@@ -30,7 +30,7 @@ public record StorageManifest(@SerializedName(KEY_VERSION) int manifestVersion, 
     }
 
     public static StorageManifest ofFiles(Map<String, FileInfo> files) {
-        return new StorageManifest(MANIFEST_VERSION, files.entrySet().stream().map(e -> new StorageManifest.Entry(e.getKey(), e.getValue().manifestSha1())).collect(Collectors.toUnmodifiableMap(StorageManifest.Entry::path, Function.identity())), Instant.now());
+        return new StorageManifest(MANIFEST_VERSION, files.entrySet().stream().map(e -> new StorageManifest.Entry(e.getKey(), e.getValue().sha1())).collect(Collectors.toUnmodifiableMap(StorageManifest.Entry::path, Function.identity())), Instant.now());
     }
 
     public record Entry(String path, String sha1) {}

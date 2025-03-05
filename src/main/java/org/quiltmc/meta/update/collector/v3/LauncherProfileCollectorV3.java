@@ -5,11 +5,9 @@ import org.quiltmc.meta.update.Constants;
 import org.quiltmc.meta.update.model.v3.LauncherProfileV3;
 import org.quiltmc.meta.update.upload.FileInfo;
 import org.quiltmc.meta.update.upload.InputCollector;
-import org.quiltmc.meta.update.util.hash.HashFunction;
-import org.quiltmc.meta.update.util.http.ContentType;
 import org.quiltmc.meta.update.util.maven.MavenRepository;
+import org.quiltmc.meta.update.util.mojang.MinecraftMeta;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +34,13 @@ public class LauncherProfileCollectorV3 extends InputCollector {
 
     @Override
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
-        var time = Instant.now();
-
-        return QuiltLauncherMetadataCollectorV3.getVersions(quiltMaven, fabricMaven, executor).thenAccept(gameLauncherVersions -> {
+        return QuiltLauncherMetadataCollectorV3.getVersions(quiltMaven, fabricMaven, executor).thenAcceptBoth(CompletableFuture.supplyAsync(() -> MinecraftMeta.get(Constants.GSON), executor), (gameLauncherVersions, mcMeta) -> {
             gameLauncherVersions.forEach((gameVersion, launcherMetadata) -> {
                 var hashed = new LauncherProfileV3.Library(launcherMetadata.hashed().maven(), quiltMaven.url().toString());
                 var intermediary = new LauncherProfileV3.Library(launcherMetadata.intermediary().maven(), fabricMaven.url().toString());
                 var loader = new LauncherProfileV3.Library(launcherMetadata.loader().maven(), quiltMaven.url().toString());
+
+                var mcVersion = mcMeta.getVersion(gameVersion);
 
                 for (var profileType : ProfileType.values()) {
 
@@ -52,15 +50,12 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                     var serverLauncherMainClass = mainClass != null ? launcherMetadata.launcherMeta().mainClass().get("serverLauncher") : null;
                     var profileId = "quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion);
 
-                    // need to compute the hash with constant timestamps, otherwise all profiles would be constantly flagged as needing updates
-                    var profileForCache = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, Instant.EPOCH, Instant.EPOCH);
-                    var hash = HashFunction.SHA1.createHash(Constants.GSON.toJson(profileForCache).getBytes(StandardCharsets.UTF_8));
-
-                    var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, time, time);
-                    var profileBytes = Constants.GSON.toJson(profile).getBytes(StandardCharsets.UTF_8);
+                    // because loader does not track its own release times, for now just copy the release times of the MC version;
+                    // TODO do we want max(mcVersion, loaderVersion) here?
+                    var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, mcVersion.releaseTime(), mcVersion.time());
 
                     //TODO change path in v4: profiles/<mcVer>/<loaderVer>/client + profiles/<mcVer>/<loaderVer>/server
-                    output.accept("v3/versions/loader/%s/%s/%s".formatted(gameVersion, launcherMetadata.loader().version(), profileType.getUrlPath()), FileInfo.withHashValue(profileBytes, ContentType.APPLICATION_JSON, hash.bytes()));
+                    output.accept("v3/versions/loader/%s/%s/%s".formatted(gameVersion, launcherMetadata.loader().version(), profileType.getUrlPath()), FileInfo.json(profile));
                 }
             });
 

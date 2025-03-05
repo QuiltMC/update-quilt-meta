@@ -145,7 +145,7 @@ public class Main implements Callable<Integer> {
             List<String> filesChanged = new ArrayList<>();
             try (var uploadExecutor = Executors.newFixedThreadPool(20)) {
                 BiPredicate<String, String> needsUpdate = existingManifest.map(BiPredicate::negate).orElse((s, s2) -> true);
-                Map<String, FileInfo> filesToUpdate = allFiles.entrySet().stream().filter(fileEntry -> needsUpdate.test(fileEntry.getKey(), fileEntry.getValue().manifestSha1())).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+                Map<String, FileInfo> filesToUpdate = allFiles.entrySet().stream().filter(fileEntry -> needsUpdate.test(fileEntry.getKey(), fileEntry.getValue().sha1())).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
 
                 // TODO progress indicator because this can run for a few hours
                 if (!filesToUpdate.isEmpty()) {

@@ -18,19 +18,15 @@ import java.util.Collection;
 import java.util.HexFormat;
 import java.util.Objects;
 
-public record FileInfo(byte[] content, ContentType contentType, byte[] manifestSha1Bytes, byte[] sha1Bytes) implements B2ContentSource {
+public record FileInfo(byte[] content, ContentType contentType, byte[] sha1Bytes) implements B2ContentSource {
 
     public static FileInfo ofBytes(byte[] content, ContentType contentType) {
-        return withHashValue(content, contentType, new byte[0]);
-    }
-
-    public static FileInfo withHashValue(byte[] content, ContentType contentType, byte[] manifestSha1) {
         if (content.length == 0) {
             throw new IllegalStateException("File is empty");
         }
 
         var sha1 = HashFunction.SHA1.createHash(content).bytes();
-        return new FileInfo(content, contentType, manifestSha1.length > 0 ? manifestSha1 : sha1, sha1);
+        return new FileInfo(content, contentType, sha1);
     }
 
     public static FileInfo json(Object json) {
@@ -61,10 +57,6 @@ public record FileInfo(byte[] content, ContentType contentType, byte[] manifestS
         return HexFormat.of().formatHex(sha1Bytes());
     }
 
-    public String manifestSha1() {
-        return HexFormat.of().formatHex(manifestSha1Bytes());
-    }
-
     @Override
     public long getContentLength() {
         return content().length;
@@ -92,7 +84,7 @@ public record FileInfo(byte[] content, ContentType contentType, byte[] manifestS
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof FileInfo(byte[] content1, ContentType contentType1, byte[] manifestSha1_1, byte[] sha1_1)
+        return o instanceof FileInfo(byte[] content1, ContentType contentType1, byte[] sha1_1)
                && contentType() == contentType1
                && Arrays.equals(sha1Bytes(), sha1_1)
                && Arrays.equals(content(), content1);
