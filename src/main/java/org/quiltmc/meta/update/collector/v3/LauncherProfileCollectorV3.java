@@ -39,7 +39,6 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                 var hashed = new LauncherProfileV3.Library(launcherMetadata.hashed().maven(), quiltMaven.url().toString());
                 var intermediary = new LauncherProfileV3.Library(launcherMetadata.intermediary().maven(), fabricMaven.url().toString());
                 var loader = new LauncherProfileV3.Library(launcherMetadata.loader().maven(), quiltMaven.url().toString());
-
                 var mcVersion = mcMeta.getVersion(gameVersion);
 
                 for (var profileType : ProfileType.values()) {

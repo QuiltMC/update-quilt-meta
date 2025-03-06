@@ -12,6 +12,7 @@ import org.quiltmc.meta.update.upload.InputCollector;
 import org.quiltmc.meta.update.util.maven.MavenRepository;
 import org.quiltmc.meta.update.util.Pair;
 import org.quiltmc.meta.update.util.maven.QuiltLoaderMetadataJson;
+import org.quiltmc.meta.update.util.mojang.MinecraftMeta;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -71,6 +72,7 @@ public class QuiltLauncherMetadataCollectorV3 extends InputCollector {
             Map<String, QuiltLoaderVersionV3> loaderVersions = QuiltLoaderVersionCollectorV3.getVersions(quiltMaven, executor).join().stream().collect(Collectors.toMap(QuiltLoaderVersionV3::version, Function.identity()));
             Map<String, HashedMojmapVersionV3> hashedVersions = HashedMojmapAndGameVersionCollectorV3.getVersions(quiltMaven, executor).join();
             Map<String, IntermediaryVersionV3> intermediaryVersions = IntermediaryVersionCollectorV3.getVersions(fabricMaven);
+            var mcMeta = MinecraftMeta.get(Constants.GSON);
 
             CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
             var loaderMavenMetaJsons = futures.stream().map(CompletableFuture::join).collect(Collectors.toMap(Pair::first, Pair::second));
@@ -82,9 +84,11 @@ public class QuiltLauncherMetadataCollectorV3 extends InputCollector {
                 var gameVersion = intermediary.version();
                 var hashed = hashedVersions.get(gameVersion);
 
-                // parity with previous data:
-                // only generate versions where both hashed and intermediary exist
-                if (hashed == null) {
+                // parity with previous v3 data:
+                // only generate versions where both hashed and intermediary exist;
+                // also filter out versions that dont exist in the MC launcher manifest
+                // TODO figure out what versions are definitively supported in meta v4
+                if (hashed == null || mcMeta.getVersion(gameVersion) == null) {
                     return;
                 }
 
