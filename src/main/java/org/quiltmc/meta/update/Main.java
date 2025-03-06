@@ -156,7 +156,7 @@ public class Main implements Callable<Integer> {
 
                 var manifest = StorageManifest.ofFiles(allFiles);
 
-                var filesToRemove = existingManifest.map(existing -> existing.files().keySet().stream().filter(Predicate.not(manifest.files()::containsKey)).toList()).orElseGet(List::of);
+                var filesToRemove = existingManifest.map(existing -> existing.files().keySet().stream().filter(Predicate.not(allFiles::containsKey)).toList()).orElseGet(List::of);
                 if (!filesToRemove.isEmpty()) {
                     LOGGER.info("Deleting {} old files...", filesToRemove.size());
                     storage.deleteFiles(filesToRemove, uploadExecutor).join();

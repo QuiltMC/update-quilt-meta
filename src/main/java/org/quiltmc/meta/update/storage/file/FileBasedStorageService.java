@@ -1,6 +1,5 @@
 package org.quiltmc.meta.update.storage.file;
 
-import com.google.common.collect.Iterables;
 import org.quiltmc.meta.update.Constants;
 import org.quiltmc.meta.update.cli.storage.FileBasedStorageConfig;
 import org.quiltmc.meta.update.storage.AbstractStorageService;
@@ -18,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.StreamSupport;
 
 public class FileBasedStorageService extends AbstractStorageService {
 
@@ -73,14 +71,19 @@ public class FileBasedStorageService extends AbstractStorageService {
 
     @Override
     public CompletableFuture<Void> deleteFiles(List<String> filesToRemove, ExecutorService executorService) {
-        return CompletableFuture.allOf(StreamSupport.stream(Iterables.partition(filesToRemove, 100).spliterator(), false).map(list -> CompletableFuture.runAsync(() -> list.forEach(rawPath -> {
-            try {
-                var targetPath = resolveValidPath(rawPath);
-                Files.deleteIfExists(targetPath);
-            } catch (IOException e) {
-                throw new UncheckedIOException("Unable to delete: " + rawPath, e);
-            }
-        }))).toArray(CompletableFuture[]::new));
+
+        // FIXME we currently cant actually delete files because the inputs to this function are api paths, and we dont really know their full paths on disk.
+        //  taking the path as-is will just not work in the best case, and delete the wrong thing in the worst case. (or throw because it was a directory..)
+        return CompletableFuture.completedFuture(null);
+
+//        return CompletableFuture.allOf(StreamSupport.stream(Iterables.partition(filesToRemove, 100).spliterator(), false).map(list -> CompletableFuture.runAsync(() -> list.forEach(rawPath -> {
+//            try {
+//                var targetPath = resolveValidPath(rawPath);
+//                Files.deleteIfExists(targetPath);
+//            } catch (IOException e) {
+//                throw new UncheckedIOException("Unable to delete: " + rawPath, e);
+//            }
+//        }))).toArray(CompletableFuture[]::new));
     }
 
     @Override
