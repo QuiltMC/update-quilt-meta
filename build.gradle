@@ -1,27 +1,80 @@
 plugins {
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
-    id 'java'
+    alias libs.plugins.shadow
+    id 'application'
+    id 'idea'
 }
+
+def javaVersion = 21
+
+group = "org.quiltmc"
+
+def env = System.getenv()
+version = env.VERSION ?: 'development'
 
 repositories {
     mavenCentral()
 }
 
+dependencies {
+    compileOnly libs.jetbrains.annotations
+
+    implementation platform(libs.aws.bom)
+    implementation libs.aws.s3
+
+    implementation libs.bundles.b2
+    implementation libs.bouncycastle
+    implementation libs.guava
+    implementation libs.gson
+    implementation libs.okhttp
+    implementation libs.picocli
+    annotationProcessor libs.picocli.annotations
+    implementation libs.slf4j.api
+
+    runtimeOnly libs.tinylog.impl
+    runtimeOnly libs.tinylog.slf4j
+
+    testImplementation libs.junit.api
+    testRuntimeOnly libs.bundles.junit
+}
+
+application {
+    mainClass.set('org.quiltmc.meta.update.Main')
+}
+
+run {
+    // @formatter:off
+    args (
+            "--local-output-dir",
+            "../__quilt_meta_test"
+    )
+    // @formatter:on
+}
+
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': 'org.quiltmc.Main'
+        attributes 'Main-Class': 'org.quiltmc.meta.update.Main'
+        attributes 'Implementation-Version': project.version.toString()
     }
 }
 
-dependencies {
-    implementation "com.google.code.gson:gson:2.8.6"
-    implementation "com.backblaze.b2:b2-sdk-core:6.1.1"
-    implementation "com.backblaze.b2:b2-sdk-httpclient:6.1.1"
-    testImplementation 'junit:junit:4.13.1'
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += "-Aproject=${project.group}/${project.name}"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
 }

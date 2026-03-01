@@ -17,6 +17,13 @@ runs:
   using: docker
   image: docker://ghcr.io/quiltmc/update-quilt-meta:latest
   args:
-    - ${{ inputs.b2-key-id }}
-    - ${{ inputs.b2-key }}
-    - ${{ inputs.cf-key }}
+    - "--b2-bucket-name"
+    - "meta-quiltmc-org"
+    - "--b2-application-key-id"
+    - "${{ inputs.b2-key-id }}"
+    - "--b2-application-key"
+    - "${{ inputs.b2-key }}"
+    - "--cf-zone-id"
+    - "73c99d057aa12563eb4cad4ef14f0796"
+    - "--cf-access-token"
+    - "${{ inputs.cf-key }}"
