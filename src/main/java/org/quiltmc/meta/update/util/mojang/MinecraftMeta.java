@@ -62,7 +62,8 @@ public record MinecraftMeta(List<MinecraftVersion> versions, Latest latest) impl
         }
         public boolean isObfuscated() {
             // Returns true if the version was released before the release date of the first non-obfuscated snapshot
-            return this.releaseTime.isBefore(Instant.parse("2025-12-16T00:00:00.00Z")); }
+            return this.releaseTime.isBefore(Instant.parse("2025-12-16T00:00:00.00Z")); 
+        }
     }
 
     public record Latest(String release, String snapshot) {}
