@@ -64,9 +64,7 @@ public class HashedMojmapAndGameVersionCollectorV3 extends InputCollector {
 
     public static List<GameVersionV3> getGameVersions(MinecraftMeta minecraftMeta, Predicate<String> isValidVersion) {
         // TODO for v4 figure out what versions we want to support.
-        // currently that means only those MC versions where hashed exists;
-        // for fabric compat we might also want to list those where intermediary exists, but not hashed;
-        // and likewise, might want to also list versions as supported where only mojmap exists
-        return minecraftMeta.versions().stream().filter(it -> isValidVersion.test(it.id())).map(GameVersionV3::fromMojang).toList();
+        // The current filter returns versions where hashed exists and versions that are unobfuscated.
+        return minecraftMeta.versions().stream().filter(it -> isValidVersion.test(it.id()) || !it.isObfuscated()).map(GameVersionV3::fromMojang).toList();
     }
 }
