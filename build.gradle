@@ -4,7 +4,7 @@ plugins {
     id 'idea'
 }
 
-def javaVersion = 21
+def javaVersion = 25
 
 group = "org.quiltmc"
 

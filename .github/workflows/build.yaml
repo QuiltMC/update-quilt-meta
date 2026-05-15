@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  JAVA_VERSION: 21
+  JAVA_VERSION: 25
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
