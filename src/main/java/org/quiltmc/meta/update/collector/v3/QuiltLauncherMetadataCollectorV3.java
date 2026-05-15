@@ -9,8 +9,8 @@ import org.quiltmc.meta.update.model.v3.QuiltLauncherMetadataV3;
 import org.quiltmc.meta.update.model.v3.QuiltLoaderVersionV3;
 import org.quiltmc.meta.update.upload.FileInfo;
 import org.quiltmc.meta.update.upload.InputCollector;
-import org.quiltmc.meta.update.util.maven.MavenRepository;
 import org.quiltmc.meta.update.util.Pair;
+import org.quiltmc.meta.update.util.maven.MavenRepository;
 import org.quiltmc.meta.update.util.maven.QuiltLoaderMetadataJson;
 import org.quiltmc.meta.update.util.mojang.MinecraftMeta;
 
@@ -78,23 +78,22 @@ public class QuiltLauncherMetadataCollectorV3 extends InputCollector {
             var loaderMavenMetaJsons = futures.stream().map(CompletableFuture::join).collect(Collectors.toMap(Pair::first, Pair::second));
 
             Multimap<String, QuiltLauncherMetadataV3> gameLauncherVersions = MultimapBuilder.linkedHashKeys().linkedHashSetValues().build();
-            loaderVersions.values().stream().flatMap(loader -> intermediaryVersions.values().stream().map(intermediary -> Pair.of(loader, intermediary))).forEach(pair -> {
-                var loader = pair.first();
-                var intermediary = pair.second();
-                var gameVersion = intermediary.version();
-                var hashed = hashedVersions.get(gameVersion);
+            for (QuiltLoaderVersionV3 loader : loaderVersions.values()) {
+                for (MinecraftMeta.MinecraftVersion gameVersion : mcMeta.versions()) {
 
-                // parity with previous v3 data:
-                // only generate versions where both hashed and intermediary exist;
-                // also filter out versions that dont exist in the MC launcher manifest
-                // TODO figure out what versions are definitively supported in meta v4
-                if (hashed == null || mcMeta.getVersion(gameVersion) == null) {
-                    return;
+                    var intermediary = intermediaryVersions.get(gameVersion.id());
+                    var hashed = hashedVersions.get(gameVersion.id());
+
+                    // parity with previous v3 data:
+                    // only generate versions where both hashed and intermediary exist,
+                    // OR if the version is not obfuscated
+                    // TODO figure out what versions are definitively supported in meta v4
+                    if ((hashed != null && intermediary != null) || !gameVersion.isObfuscated()) {
+                        var version = new QuiltLauncherMetadataV3(loader, hashed, intermediary, loaderMavenMetaJsons.get(loader.version()));
+                        gameLauncherVersions.put(gameVersion.id(), version);
+                    }
                 }
-
-                var version = new QuiltLauncherMetadataV3(loader, hashed, intermediary, loaderMavenMetaJsons.get(loader.version()));
-                gameLauncherVersions.put(gameVersion, version);
-            });
+            }
 
             return gameLauncherVersions;
         }, executor);

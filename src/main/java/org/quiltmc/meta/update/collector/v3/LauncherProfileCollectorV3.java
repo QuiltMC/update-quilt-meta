@@ -9,13 +9,13 @@ import org.quiltmc.meta.update.util.maven.MavenRepository;
 import org.quiltmc.meta.update.util.mojang.MinecraftMeta;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
-import java.util.stream.Stream;
 
 public class LauncherProfileCollectorV3 extends InputCollector {
 
@@ -36,14 +36,24 @@ public class LauncherProfileCollectorV3 extends InputCollector {
     public CompletableFuture<Void> gatherData(BiConsumer<String, FileInfo> output, Executor executor) {
         return QuiltLauncherMetadataCollectorV3.getVersions(quiltMaven, fabricMaven, executor).thenAcceptBoth(CompletableFuture.supplyAsync(() -> MinecraftMeta.get(Constants.GSON), executor), (gameLauncherVersions, mcMeta) -> {
             gameLauncherVersions.forEach((gameVersion, launcherMetadata) -> {
-                var hashed = new LauncherProfileV3.Library(launcherMetadata.hashed().maven(), quiltMaven.url().toString());
-                var intermediary = new LauncherProfileV3.Library(launcherMetadata.intermediary().maven(), fabricMaven.url().toString());
+                var hashed = launcherMetadata.hashed() != null ? new LauncherProfileV3.Library(launcherMetadata.hashed().maven(), quiltMaven.url().toString()) : null;
+                var intermediary = launcherMetadata.intermediary() != null ? new LauncherProfileV3.Library(launcherMetadata.intermediary().maven(), fabricMaven.url().toString()) : null;
                 var loader = new LauncherProfileV3.Library(launcherMetadata.loader().maven(), quiltMaven.url().toString());
                 var mcVersion = mcMeta.getVersion(gameVersion);
 
                 for (var profileType : ProfileType.values()) {
 
-                    List<LauncherProfileV3.Library> libraries = Stream.concat(profileType.getLibraryKeysToInclude().stream().flatMap(key -> launcherMetadata.launcherMeta().libraries().get(key).stream()).map(LauncherProfileV3.Library::fromLauncherMeta), Stream.of(hashed, intermediary, loader)).toList();
+                    List<LauncherProfileV3.Library> libraries = new ArrayList<>(20);
+                    profileType.getLibraryKeysToInclude().stream().flatMap(key -> launcherMetadata.launcherMeta().libraries().get(key).stream()).map(LauncherProfileV3.Library::fromLauncherMeta).forEach(libraries::add);
+                    libraries.add(loader);
+
+                    // MC 26.1 onwards do not have obfuscation mappings
+                    if(hashed != null) {
+                        libraries.add(hashed);
+                    }
+                    if(intermediary != null) {
+                        libraries.add(intermediary);
+                    }
 
                     var mainClass = Optional.ofNullable(launcherMetadata.launcherMeta().mainClass()).map(map -> map.get(profileType.getName())).orElse(null);
                     var serverLauncherMainClass = mainClass != null ? launcherMetadata.launcherMeta().mainClass().get("serverLauncher") : null;
