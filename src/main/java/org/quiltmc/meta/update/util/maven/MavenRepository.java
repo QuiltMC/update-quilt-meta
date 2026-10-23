@@ -18,6 +18,7 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -268,8 +269,14 @@ public class MavenRepository implements Closeable {
 
                             var request = new Request.Builder().url(url().toString() + hashFunction.getMavenFileSuffix()).get().build();
                             makeFileRequest(request, body -> {
-                                try (var stream = body.byteStream()) {
-                                    hashes.put(hashFunction, hashFunction.createHash(stream));
+                                try (var reader = new BufferedReader(body.charStream())) {
+                                    // there is no real hard spec about whether the hash file may include newlines,
+                                    // so we tolerate it.
+                                    var line = reader.readLine();
+                                    if(line == null) {
+                                        throw new IOException("Empty hash file: " + request.url());
+                                    }
+                                    hashes.put(hashFunction, Hash.parseHexValue(hashFunction, line));
                                 }
                             });
                         }
