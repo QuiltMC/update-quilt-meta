@@ -9,12 +9,22 @@ env:
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
-  build:
+  init:
     runs-on: ubuntu-latest
+    outputs:
+      SHORT_SHA: ${{ steps.setup.outputs.SHORT_SHA }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Setup ENV
-        run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+      - id: setup
+        run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_OUTPUT
+
+  build:
+    runs-on: ubuntu-latest
+    needs: init
+    env:
+      SHORT_SHA: ${{ needs.init.outputs.SHORT_SHA }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
@@ -40,10 +50,10 @@ jobs:
 
   ghcr:
     runs-on: ubuntu-latest
+    needs: init
+    env:
+      SHORT_SHA: ${{ needs.init.outputs.SHORT_SHA }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Setup ENV
-        run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Login to Github Container Registry
@@ -78,10 +88,10 @@ jobs:
 
   generate-meta:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [init, build]
+    env:
+      SHORT_SHA: ${{ needs.init.outputs.SHORT_SHA }}
     steps:
-      - name: Setup ENV
-        run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
