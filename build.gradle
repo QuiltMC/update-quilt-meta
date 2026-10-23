@@ -75,6 +75,5 @@ test {
 idea {
     module {
         downloadSources = true
-        downloadJavadoc = true
     }
 }
