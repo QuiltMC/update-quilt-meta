@@ -37,6 +37,7 @@ junit_platform_launcher = { module = "org.junit.platform:junit-platform-launcher
 [bundles]
 b2 = ["b2_core", "b2_httpclient"]
 junit = ["junit_engine", "junit_platform_launcher"]
+tinylog = ["tinylog_slf4j", "tinylog_impl"]
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
