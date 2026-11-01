@@ -1,7 +1,7 @@
 [versions]
 shadow = "9.6.1"
 
-aws_sdk = "2.57.0"
+aws_sdk = "2.57.3"
 b2_sdk = "6.5.0"
 bouncycastle = "1.86"
 guava = "33.7.2-jre"
