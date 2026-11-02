@@ -4,6 +4,10 @@ on:
     branches: [ '*' ]
   pull_request:
 
+concurrency:
+  group: build-${{ github.ref_name }}
+  cancel-in-progress: true
+
 env:
   JAVA_VERSION: 25
   BUILD_NUMBER: ${{ github.run_number }}
