@@ -69,7 +69,7 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                     var jvmArgs = ImmutableList.<String>builder();
 
                     // Java4Shell mitigation
-                    if(mcVersion.isJava17OrLater()) {
+                    if(profileType == ProfileType.CLIENT && mcVersion.isJava17OrLater()) {
                         // UnlockDiagnosticVMOptions is not required on hotspot because they did not follow their own spec;
                         // we add it anyway to not break azul variants
                         jvmArgs.add("-XX:+UnlockDiagnosticVMOptions");
