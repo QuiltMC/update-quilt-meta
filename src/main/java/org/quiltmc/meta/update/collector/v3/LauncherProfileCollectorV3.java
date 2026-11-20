@@ -61,8 +61,6 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                     var serverLauncherMainClass = mainClass != null ? launcherMetadata.launcherMeta().mainClass().get("serverLauncher") : null;
                     var profileId = "quilt-loader-%s-%s".formatted(launcherMetadata.loader().version(), gameVersion);
 
-                    // because loader does not track its own release times, for now just copy the release times of the MC version;
-                    // TODO do we want max(mcVersion, loaderVersion) here?
                     var arguments = ImmutableMap.<String, List<String>>builder();
                     arguments.put("game", List.of());
 
@@ -71,6 +69,8 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                         arguments.put("jvm", jvmArgs);
                     }
 
+                    // because loader does not track its own release times, for now just copy the release times of the MC version;
+                    // TODO do we want max(mcVersion, loaderVersion) here?
                     var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, arguments.build(), libraries, mcVersion.releaseTime(), mcVersion.time());
 
                     //TODO change path in v4: profiles/<mcVer>/<loaderVer>/client + profiles/<mcVer>/<loaderVer>/server
