@@ -66,9 +66,8 @@ public class MavenRepository implements Closeable {
         try {
             var request = new Request.Builder().url(uri.toURL()).get().build();
 
-            try (var response = client.newCall(request).execute()) {
-                var body = response.body();
-                if (!response.isSuccessful() || body == null) {
+            try (var response = client.newCall(request).execute(); var body = response.body()) {
+                if (!response.isSuccessful()) {
                     try {
                         var message = HttpUtils.readBody(body);
                         LOGGER.error("HTTP {} - {}: {}{}", response.code(), response.message(), response.request().url(), message.stream().map(line -> "\n\t" + line));
