@@ -66,14 +66,9 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                     var arguments = ImmutableMap.<String, List<String>>builder();
                     arguments.put("game", List.of());
 
-                    var jvmArgs = ImmutableList.<String>builder();
-
-                    // Java4Shell mitigation
-                    if(profileType == ProfileType.CLIENT && mcVersion.isJava17OrLater()) {
-                        // UnlockDiagnosticVMOptions is not required on hotspot because they did not follow their own spec;
-                        // we add it anyway to not break azul variants
-                        jvmArgs.add("-XX:+UnlockDiagnosticVMOptions");
-                        jvmArgs.add("-XX:-UseBASE64Intrinsics");
+                    var jvmArgs = buildJvmArgs(profileType, mcVersion);
+                    if(!jvmArgs.isEmpty()) {
+                        arguments.put("jvm", jvmArgs);
                     }
 
                     var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, mcVersion.releaseTime(), mcVersion.time());
@@ -85,6 +80,20 @@ public class LauncherProfileCollectorV3 extends InputCollector {
 
             LOGGER.info("Generated {} launch profiles", gameLauncherVersions.size() * ProfileType.values().length);
         });
+    }
+
+    private static ImmutableList<String> buildJvmArgs(ProfileType profileType, MinecraftMeta.MinecraftVersion mcVersion) {
+        var jvmArgsBuilder = ImmutableList.<String>builder();
+
+        // Java4Shell mitigation
+        if(profileType == ProfileType.CLIENT && mcVersion.isJava17OrLater()) {
+            // UnlockDiagnosticVMOptions is not required on hotspot because they did not follow their own spec;
+            // we add it anyway to not break azul variants
+            jvmArgsBuilder.add("-XX:+UnlockDiagnosticVMOptions");
+            jvmArgsBuilder.add("-XX:-UseBASE64Intrinsics");
+        }
+
+        return jvmArgsBuilder.build();
     }
 
     private enum ProfileType {
