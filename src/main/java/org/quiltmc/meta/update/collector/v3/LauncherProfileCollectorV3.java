@@ -71,7 +71,7 @@ public class LauncherProfileCollectorV3 extends InputCollector {
                         arguments.put("jvm", jvmArgs);
                     }
 
-                    var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, mcVersion.releaseTime(), mcVersion.time());
+                    var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, arguments.build(), libraries, mcVersion.releaseTime(), mcVersion.time());
 
                     //TODO change path in v4: profiles/<mcVer>/<loaderVer>/client + profiles/<mcVer>/<loaderVer>/server
                     output.accept("v3/versions/loader/%s/%s/%s".formatted(gameVersion, launcherMetadata.loader().version(), profileType.getUrlPath()), FileInfo.json(profile));
