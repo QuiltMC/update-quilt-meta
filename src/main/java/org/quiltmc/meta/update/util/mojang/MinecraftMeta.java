@@ -18,6 +18,12 @@ public record MinecraftMeta(List<MinecraftVersion> versions, Latest latest) impl
 
     private static final URI VERSION_MANIFEST_V2_URL = URI.create("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
 
+    /// 1.18-pre2
+    private static final Instant JAVA_17_CUTOFF = Instant.parse("2021-11-16T17:04:47Z");
+
+    /// 26.1 snapshots onwards are no longer obfuscated
+    private static final Instant DEOBF_VERSION_CUTOFF = Instant.parse("2025-12-16T00:00:00.00Z");
+
     public static MinecraftMeta get(Gson gson) {
         try (var reader = new InputStreamReader(new BufferedInputStream(VERSION_MANIFEST_V2_URL.toURL().openStream()))) {
             return gson.fromJson(reader, MinecraftMeta.class);
@@ -60,9 +66,14 @@ public record MinecraftMeta(List<MinecraftVersion> versions, Latest latest) impl
         public boolean isRelease() {
             return TYPE_RELEASE.equals(type);
         }
+        /// @return {@code true} if the version was released before the release date of the first non-obfuscated snapshot
         public boolean isObfuscated() {
-            // Returns true if the version was released before the release date of the first non-obfuscated snapshot
-            return this.releaseTime.isBefore(Instant.parse("2025-12-16T00:00:00.00Z")); 
+            return this.releaseTime.isBefore(DEOBF_VERSION_CUTOFF);
+        }
+
+        /// used to add mitigations for [Java4Shell](https://calif.io/java4shell/)
+        public boolean isJava17OrLater() {
+            return this.releaseTime.isAfter(JAVA_17_CUTOFF);
         }
     }
 

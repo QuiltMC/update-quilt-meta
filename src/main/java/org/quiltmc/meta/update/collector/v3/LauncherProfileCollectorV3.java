@@ -1,5 +1,7 @@
 package org.quiltmc.meta.update.collector.v3;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.jetbrains.annotations.Nullable;
 import org.quiltmc.meta.update.Constants;
 import org.quiltmc.meta.update.model.v3.LauncherProfileV3;
@@ -61,6 +63,19 @@ public class LauncherProfileCollectorV3 extends InputCollector {
 
                     // because loader does not track its own release times, for now just copy the release times of the MC version;
                     // TODO do we want max(mcVersion, loaderVersion) here?
+                    var arguments = ImmutableMap.<String, List<String>>builder();
+                    arguments.put("game", List.of());
+
+                    var jvmArgs = ImmutableList.<String>builder();
+
+                    // Java4Shell mitigation
+                    if(mcVersion.isJava17OrLater()) {
+                        // UnlockDiagnosticVMOptions is not required on hotspot because they did not follow their own spec;
+                        // we add it anyway to not break azul variants
+                        jvmArgs.add("-XX:+UnlockDiagnosticVMOptions");
+                        jvmArgs.add("-XX:-UseBASE64Intrinsics");
+                    }
+
                     var profile = profileType.create(profileId, gameVersion, LauncherProfileV3.TYPE_RELEASE, mainClass, serverLauncherMainClass, Map.of("game", List.of()), libraries, mcVersion.releaseTime(), mcVersion.time());
 
                     //TODO change path in v4: profiles/<mcVer>/<loaderVer>/client + profiles/<mcVer>/<loaderVer>/server
